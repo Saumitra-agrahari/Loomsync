@@ -60,6 +60,8 @@ Costing, invoicing, export documents, fabric inventory, attendance/payroll. Paym
 - **A6** Thresholds (green ≥ 1.00, amber 0.80–0.99, red < 0.80) are defaults, editable by merchandiser later.
 - **A7** Seed output rates are invented to produce a green/amber/red mix; they are not client data.
 - **A8** Tamil voice input uses the browser speech API where supported; text is the fallback.
+- **A9** Image uploads are compressed client-side to ≤ 300 KB before transmission; object storage keys are structured by PO and timestamp.
+- **A10** Fallback keyword classification uses verified Tiruppur garment terminology (பழுது, துணி, ஆட்கள், மின்சாரம்) and honestly marks category_source as fallback with confidence ~0.70–0.75.
 
 ## 7. Build plan (7 days, solo)
 | Day | Output |

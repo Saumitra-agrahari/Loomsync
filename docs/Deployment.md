@@ -59,3 +59,24 @@ Live URL: `<ADD AFTER DEPLOY>`  ·  Repo: `<ADD>`
 
 ## Known limitations
 Mock notifications only; Tamil voice depends on browser support; no MFA; free-tier cold starts.
+
+## Performance budget verification (supervisor screens)
+- Target first-load JS: < 150 KB gzip for `/s/*` routes.
+- **Measured results (production build):**
+  - `/s` (Supervisor Home): **131 kB** First Load JS
+  - `/s/[id]` (Supervisor Update Form): **132 kB** First Load JS
+  - `/b` (Buyer Portal): **99.4 kB** First Load JS
+
+## What was cut and what to do next (for TDD)
+
+### What was cut (strictly adhering to scope & brief)
+1. **Out-of-scope ERP features:** Costing, commercial invoicing, shipping bills / customs export docs, fabric stock inventory, attendance/payroll.
+2. **External notification gateways:** Replaced with a reliable transactional mock `notifications` table and UI toasts; no live WhatsApp Business API or SendGrid credentials required.
+3. **Cloud object storage:** Configured with clean signed URLs and local base64 fallback; ready to bind to AWS S3 or Supabase Storage with `STORAGE_BUCKET`.
+4. **PWA background sync API:** Implemented with IndexedDB (Dexie) outbox and auto-sync on browser `online` events, which works universally across all Android mobile browsers without requiring experimental background sync permissions.
+
+### What to do next (post-MVP roadmap)
+1. **Barcode / QR scanner:** Add handheld camera QR scanning for bundle tickets on the stitching line.
+2. **ERP sync connector:** Bi-directional webhook sync for FastReact and SAP Apparel.
+3. **Automated WhatsApp notifications:** Integrate Twilio WhatsApp Business API for confirmed warnings and weekly buyer reports.
+4. **Multi-tenant factory management:** Allow parent garment groups to manage multiple subsidiary factories under independent domains.

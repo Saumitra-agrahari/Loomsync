@@ -72,9 +72,9 @@ async function runSeed() {
     // Insert orders
     for (const o of seed.orders) {
       await sql`
-        INSERT INTO orders (id, po_no, buyer_id, style, status, ex_factory_date, original_ex_factory_date, template_id, created_by, created_at)
-        VALUES (${o.id}, ${o.poNo}, ${o.buyerId}, ${o.style}, ${o.status}, ${o.exFactoryDate}, ${o.originalExFactoryDate}, ${o.templateId}, ${o.createdBy}, ${o.createdAt})
-        ON CONFLICT (buyer_id, po_no) DO NOTHING
+        INSERT INTO orders (id, poNo, buyer_id, style, status, ex_factory_date, original_ex_factory_date, template_id, created_by, created_at)
+        VALUES (${o.id}, ${o.poNo}, ${o.buyerId}, ${o.style}, ${o.status}, ${o.exFactoryDate}, ${o.originalExFactoryDate}, ${o.templateId ?? null}, ${o.createdBy}, ${o.createdAt})
+        ON CONFLICT (buyer_id, poNo) DO NOTHING
       `;
     }
 
@@ -91,7 +91,7 @@ async function runSeed() {
     for (const s of seed.orderStages) {
       await sql`
         INSERT INTO order_stages (id, order_id, stage, seq, unit_id, target_qty, planned_start, planned_end, current_end, actual_end)
-        VALUES (${s.id}, ${s.orderId}, ${s.stage}, ${s.seq}, ${s.unitId}, ${s.targetQty}, ${s.plannedStart}, ${s.plannedEnd}, ${s.currentEnd}, ${s.actualEnd})
+        VALUES (${s.id}, ${s.orderId}, ${s.stage}, ${s.seq}, ${s.unitId}, ${s.targetQty}, ${s.plannedStart}, ${s.plannedEnd}, ${s.currentEnd}, ${s.actualEnd ?? null})
         ON CONFLICT (id) DO NOTHING
       `;
     }
@@ -100,7 +100,7 @@ async function runSeed() {
     for (const h of seed.milestoneDateHistory) {
       await sql`
         INSERT INTO milestone_date_history (id, order_id, order_stage_id, field, old_date, new_date, reason, changed_by, changed_at)
-        VALUES (${h.id}, ${h.orderId}, ${h.orderStageId || null}, ${h.field}, ${h.oldDate}, ${h.newDate}, ${h.reason}, ${h.changedBy}, ${h.changedAt})
+        VALUES (${h.id}, ${h.orderId}, ${h.orderStageId ?? null}, ${h.field}, ${h.oldDate}, ${h.newDate}, ${h.reason}, ${h.changedBy}, ${h.changedAt})
         ON CONFLICT (id) DO NOTHING
       `;
     }
@@ -109,7 +109,7 @@ async function runSeed() {
     for (const u of seed.dailyUpdates) {
       await sql`
         INSERT INTO daily_updates (id, client_uuid, order_stage_id, unit_id, reported_date, qty, note_original, note_lang, note_en, reason_category, ai_confidence, category_source, submitted_by, client_ts, received_at, is_correction)
-        VALUES (${u.id}, ${u.clientUuid}, ${u.orderStageId}, ${u.unitId}, ${u.reportedDate}, ${u.qty}, ${u.noteOriginal}, ${u.noteLang}, ${u.noteEn}, ${u.reasonCategory}, ${u.aiConfidence}, ${u.categorySource}, ${u.submittedBy}, ${u.clientTs}, ${u.receivedAt}, ${u.isCorrection})
+        VALUES (${u.id}, ${u.clientUuid}, ${u.orderStageId}, ${u.unitId}, ${u.reportedDate}, ${u.qty}, ${u.noteOriginal ?? null}, ${u.noteLang ?? null}, ${u.noteEn ?? null}, ${u.reasonCategory ?? null}, ${u.aiConfidence ?? null}, ${u.categorySource ?? null}, ${u.submittedBy}, ${u.clientTs}, ${u.receivedAt}, ${u.isCorrection})
         ON CONFLICT (client_uuid) DO NOTHING
       `;
     }

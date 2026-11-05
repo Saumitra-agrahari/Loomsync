@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 255 255 255;
+    --surface: 247 247 245;
+    --text-primary: 22 22 22;
+    --text-secondary: 107 107 102;
+    --accent: 43 58 103;
+  }
+
+  body {
+    background-color: #FFFFFF;
+    color: #161616;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans Tamil', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  input, select, textarea, button {
+    font-size: 16px; /* Prevents auto-zoom on mobile iOS/Android */
+  }
+}
+
+.tap-target {
+  min-height: 48px;
+  min-width: 48px;
+}
