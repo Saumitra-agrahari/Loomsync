@@ -155,8 +155,9 @@ export function calculateRunRate(params: RunRateParams): RunRateResult {
   const remaining = Math.max(0, params.stageTargetQty - params.totalQtyDoneInStage);
   const downstreamDays = params.downstreamStages.reduce((acc, s) => acc + s.plannedDurationDays, 0);
 
-  // Total working days between today and ex_factory
-  const workingDaysTotal = countWorkingDays(params.today, params.exFactoryDate, holidays);
+  // Future working days between tomorrow and ex_factory (today's output is already accounted in totalQtyDoneInStage)
+  const tomorrow = addDays(params.today, 1);
+  const workingDaysTotal = countWorkingDays(tomorrow, params.exFactoryDate, holidays);
   // Days available for the current stage = working days minus downstream days
   const daysAvailable = workingDaysTotal - downstreamDays;
 
