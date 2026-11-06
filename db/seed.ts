@@ -205,10 +205,11 @@ async function runSeed() {
       const id = toUuid(w.id);
       const orderId = toUuid(w.orderId);
       const orderStageId = toUuid(w.orderStageId);
+      const decidedBy = w.decidedBy ? toUuid(w.decidedBy) : null;
       await sql`
-        INSERT INTO warnings (id, order_id, order_stage_id, status, required_rate, actual_rate, remaining, days_available, slip_days, math_snapshot, created_at)
-        VALUES (${id}, ${orderId}, ${orderStageId}, ${w.status}, ${w.requiredRate}, ${w.actualRate}, ${w.remaining}, ${w.daysAvailable}, ${w.slipDays}, ${JSON.stringify(w.mathSnapshot)}, ${w.createdAt})
-        ON CONFLICT (id) DO NOTHING
+        INSERT INTO warnings (id, order_id, order_stage_id, status, required_rate, actual_rate, remaining, days_available, slip_days, math_snapshot, decided_by, decided_at, dismiss_reason, created_at)
+        VALUES (${id}, ${orderId}, ${orderStageId}, ${w.status}, ${w.requiredRate}, ${w.actualRate}, ${w.remaining}, ${w.daysAvailable}, ${w.slipDays}, ${JSON.stringify(w.mathSnapshot)}, ${decidedBy}, ${w.decidedAt ?? null}, ${w.dismissReason ?? null}, ${w.createdAt})
+        ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status, decided_by = EXCLUDED.decided_by, decided_at = EXCLUDED.decided_at
       `;
     }
 

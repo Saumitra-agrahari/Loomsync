@@ -442,11 +442,11 @@ export function generateSeedData(baseToday: string = "2026-11-05") {
       buyerId: buyers[0].id,
       style: "Girls ruffle top, pink",
       totalQty: 9000,
-      exFactoryDate: addDays(baseToday, 27),
-      originalExFactoryDate: addDays(baseToday, 27),
+      exFactoryDate: addDays(baseToday, 22),
+      originalExFactoryDate: addDays(baseToday, 22),
       currentStage: "Cutting",
       stageDone: 5000,
-      last3Rate: 500, // GREEN
+      last3Rate: 530, // AMBER (~530/day vs 571 needed, ratio ~0.93)
       unitId: units[2].id,
       lines: [
         { colour: "Pink", size: "6Y", qty: 4500 },
@@ -528,11 +528,11 @@ export function generateSeedData(baseToday: string = "2026-11-05") {
       buyerId: buyers[1].id,
       style: "Baby rib romper 3-pack, multi",
       totalQty: 11000,
-      exFactoryDate: addDays(baseToday, 25),
-      originalExFactoryDate: addDays(baseToday, 25),
+      exFactoryDate: addDays(baseToday, 10),
+      originalExFactoryDate: addDays(baseToday, 10),
       currentStage: "Stitching",
       stageDone: 5500,
-      last3Rate: 600, // GREEN
+      last3Rate: 650, // RED (~650/day vs 917 needed, ratio ~0.71)
       unitId: units[1].id,
       lines: [
         { colour: "Multi", size: "0-3M", qty: 5000 },
@@ -779,13 +779,14 @@ export function generateSeedData(baseToday: string = "2026-11-05") {
     }
   }
 
-  // Pre-seed 1 draft warning for B-PO-88240 (Red order)
-  const redOrderStage = orderStages.find((s) => s.orderId === "ord-b-88240" && s.stage === "Finishing");
-  if (redOrderStage) {
+  // Pre-seed 2 draft warnings (one per red order) and 1 confirmed warning for Buyer B
+  // Draft Warning 1 (Red order 1: B-PO-88240, Finishing)
+  const redStage1 = orderStages.find((s) => s.orderId === "ord-b-88240" && s.stage === "Finishing");
+  if (redStage1) {
     warnings.push({
       id: "warn-b-88240-draft",
       orderId: "ord-b-88240",
-      orderStageId: redOrderStage.id,
+      orderStageId: redStage1.id,
       status: "draft",
       requiredRate: 560,
       actualRate: 400,
@@ -808,6 +809,74 @@ export function generateSeedData(baseToday: string = "2026-11-05") {
         exFactoryDate: addDays(baseToday, 7),
         calculatedAt: nowIso,
       },
+      createdAt: nowIso,
+    });
+  }
+
+  // Draft Warning 2 (Red order 2: C-PO-0515, Stitching)
+  const redStage2 = orderStages.find((s) => s.orderId === "ord-c-0515" && s.stage === "Stitching");
+  if (redStage2) {
+    warnings.push({
+      id: "warn-c-0515-draft",
+      orderId: "ord-c-0515",
+      orderStageId: redStage2.id,
+      status: "draft",
+      requiredRate: 917,
+      actualRate: 650,
+      remaining: 5500,
+      daysAvailable: 6,
+      slipDays: 3,
+      mathSnapshot: {
+        stageTargetQty: 11000,
+        totalQtyDoneInStage: 5500,
+        remaining: 5500,
+        downstreamDays: 3,
+        workingDaysTotal: 9,
+        daysAvailable: 6,
+        requiredRate: 917,
+        actualRate: 650,
+        ratio: 0.71,
+        projectedFinish: addDays(baseToday, 13),
+        slipDays: 3,
+        today: baseToday,
+        exFactoryDate: addDays(baseToday, 10),
+        calculatedAt: nowIso,
+      },
+      createdAt: nowIso,
+    });
+  }
+
+  // Confirmed Warning (Visible to Buyer B for order B-PO-88260)
+  const confirmedStage = orderStages.find((s) => s.orderId === "ord-b-88260" && s.stage === "Stitching");
+  if (confirmedStage) {
+    warnings.push({
+      id: "warn-b-88260-confirmed",
+      orderId: "ord-b-88260",
+      orderStageId: confirmedStage.id,
+      status: "confirmed",
+      requiredRate: 323,
+      actualRate: 310,
+      remaining: 2900,
+      daysAvailable: 9,
+      slipDays: 1,
+      mathSnapshot: {
+        stageTargetQty: 5000,
+        totalQtyDoneInStage: 2100,
+        remaining: 2900,
+        downstreamDays: 3,
+        workingDaysTotal: 12,
+        daysAvailable: 9,
+        requiredRate: 323,
+        actualRate: 310,
+        ratio: 0.96,
+        projectedFinish: addDays(baseToday, 15),
+        slipDays: 1,
+        today: baseToday,
+        exFactoryDate: addDays(baseToday, 14),
+        calculatedAt: nowIso,
+      },
+      decidedBy: users[0].id,
+      decidedAt: nowIso,
       createdAt: nowIso,
     });
   }

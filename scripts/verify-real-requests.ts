@@ -45,10 +45,11 @@ async function waitForServer(retries = 30): Promise<boolean> {
 
 async function run() {
   console.log("=== Starting Next.js Production Server on port", PORT, "===");
+  const authSecret = process.env.AUTH_SECRET || "production-test-auth-secret-key-at-least-32-chars-long";
   const server = spawn("npx", ["next", "start", "-p", String(PORT)], {
     shell: true,
     stdio: "inherit",
-    env: { ...process.env, PORT: String(PORT) },
+    env: { ...process.env, PORT: String(PORT), AUTH_SECRET: authSecret },
   });
 
   try {
@@ -57,6 +58,21 @@ async function run() {
       throw new Error("Server failed to become ready in 30 seconds");
     }
     console.log("✅ Next.js server is up and listening on", BASE_URL);
+
+    // -------------------------------------------------------------
+    // Health Check: GET /api/health
+    // -------------------------------------------------------------
+    console.log("\n--- Health Check: GET /api/health ---");
+    const healthRes = await fetch(`${BASE_URL}/api/health`);
+    if (!healthRes.ok) {
+      throw new Error(`Health check failed with status ${healthRes.status}`);
+    }
+    const healthData = await healthRes.json();
+    console.log("Health check response:", JSON.stringify(healthData));
+    if (healthData.status !== "ok" || !healthData.database?.connected) {
+      throw new Error("Health check reported unhealthy database connection!");
+    }
+    console.log("✅ Health check PASSED: ok, database connected.");
 
     // -------------------------------------------------------------
     // Test 1: Log in as merch@demo.example
@@ -101,17 +117,17 @@ async function run() {
 
     const { summary, orders } = ordersData;
 
-    // Verify summary requirements: exactly 1 RED, at least 1 AMBER, at least 1 GREEN
-    if (summary.red !== 1) {
-      throw new Error(`Expected exactly 1 RED order on board, but found ${summary.red}`);
+    // Verify summary requirements: at least 2 RED, at least 3 AMBER, at most 1 GREY
+    if (summary.red < 2) {
+      throw new Error(`Expected at least 2 RED orders on board, but found ${summary.red}`);
     }
-    if (summary.amber < 1) {
-      throw new Error(`Expected at least 1 AMBER order on board, but found ${summary.amber}`);
+    if (summary.amber < 3) {
+      throw new Error(`Expected at least 3 AMBER orders on board, but found ${summary.amber}`);
     }
-    if (summary.green < 1) {
-      throw new Error(`Expected at least 1 GREEN order on board, but found ${summary.green}`);
+    if (summary.grey > 1) {
+      throw new Error(`Expected at most 1 GREY order on board, but found ${summary.grey}`);
     }
-    console.log("✅ Board summary assertion PASSED: exactly 1 RED, at least 1 AMBER, at least 1 GREEN.");
+    console.log("✅ Board summary assertion PASSED: at least 2 RED, at least 3 AMBER, at most 1 GREY.");
 
     // Print all orders with PO, Buyer, Stage, Done / Target, Status
     console.log("\n--- Full Order Board Status ---");
@@ -287,8 +303,47 @@ async function run() {
     }
     console.log("✅ Strict isolation verified: Buyer B received 404 Not Found when attempting to access Buyer C order!");
 
+    // -------------------------------------------------------------
+    // Test 5: Verify Photo access: Buyer B can view Buyer B's photo; gets 404 for Buyer C's photo
+    // -------------------------------------------------------------
+    console.log("\n--- Test 5: Real-request photo authorization & isolation ---");
+    const buyerBPhotos = await db.query.photos.findMany({
+      where: eq(schema.photos.orderId, sample88213.id),
+    });
+    const buyerCPhotos = await db.query.photos.findMany({
+      where: eq(schema.photos.orderId, buyerCOrder.id),
+    });
+
+    if (buyerBPhotos.length === 0 || buyerCPhotos.length === 0) {
+      throw new Error("Could not find seeded photos for Buyer B or Buyer C orders!");
+    }
+
+    const bPhoto = buyerBPhotos[0];
+    const cPhoto = buyerCPhotos[0];
+
+    // Buyer B requests own photo
+    const bReqOwnRes = await fetch(`${BASE_URL}/api/photos/${bPhoto.id}`, {
+      headers: { Cookie: buyerBCookie },
+    });
+    console.log(`Buyer B requesting own photo (${bPhoto.id}): Status=${bReqOwnRes.status}, Content-Type=${bReqOwnRes.headers.get("content-type")}`);
+    if (bReqOwnRes.status !== 200) {
+      throw new Error(`Buyer B failed to view own photo! Expected 200, got ${bReqOwnRes.status}`);
+    }
+    const photoBlob = await bReqOwnRes.arrayBuffer();
+    console.log(`✅ Buyer B successfully received photo bytes (${photoBlob.byteLength} bytes).`);
+
+    // Buyer B requests Buyer C's photo
+    const bReqWrongRes = await fetch(`${BASE_URL}/api/photos/${cPhoto.id}`, {
+      headers: { Cookie: buyerBCookie },
+    });
+    console.log(`Buyer B requesting Buyer C photo (${cPhoto.id}): Status=${bReqWrongRes.status}`);
+    if (bReqWrongRes.status !== 404) {
+      throw new Error(`Security failure! Expected 404 for cross-buyer photo access, got ${bReqWrongRes.status}`);
+    }
+    console.log("✅ Photo isolation verified: Buyer B received 404 Not Found requesting Buyer C's photo!");
+
     await pool.end();
-    console.log("\n🎉 ALL STEP 5 VERIFICATION CHECKS PASSED SUCCESSFULLY!");
+    console.log("\n🎉 ALL REAL-REQUEST VERIFICATION CHECKS PASSED SUCCESSFULLY!");
   } finally {
     console.log("\nStopping server process...");
     server.kill();
