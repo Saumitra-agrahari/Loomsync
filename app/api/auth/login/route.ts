@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import * as repo from "@/lib/db/repo";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { createSessionCookie, type SessionPayload } from "@/lib/auth/session";
+import { checkRateLimit, getClientIp } from "@/lib/security/rate-limit";
 
 const loginSchema = z.object({
   email: z.string().email("Valid email required"),
@@ -11,6 +12,18 @@ const loginSchema = z.object({
 
 export async function POST(req: Request) {
   try {
+    const clientIp = getClientIp(req);
+    const rateCheck = checkRateLimit(`login:${clientIp}`, 5, 60);
+    if (!rateCheck.success) {
+      return apiError(
+        "RATE_LIMITED",
+        "Too many login attempts. Please wait 1 minute before trying again.",
+        429,
+        undefined,
+        { "Retry-After": String(rateCheck.retryAfterSeconds) }
+      );
+    }
+
     const body = await req.json();
     const parsed = loginSchema.safeParse(body);
     if (!parsed.success) {

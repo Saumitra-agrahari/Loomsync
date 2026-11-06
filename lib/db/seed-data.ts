@@ -217,14 +217,15 @@ export function generateSeedData(baseToday: string = "2026-11-05") {
     },
   ];
 
-  // Buyer token link for Company B
-  // SHA-256 for "demo-buyer-b-token-1234567890"
-  // crypto.createHash('sha256').update('demo-buyer-b-token-1234567890').digest('hex')
+  // Cryptographically random buyer link token generated at seed time (never hardcoded in source/docs)
+  const generatedBuyerToken = crypto.randomBytes(32).toString("hex");
+  const buyerTokenHash = crypto.createHash("sha256").update(generatedBuyerToken).digest("hex");
+
   const buyerLinks: BuyerLink[] = [
     {
       id: "blink-b1",
       buyerId: buyers[0].id,
-      tokenHash: "61c97eb8b5cd04b9980b3270e4ad316232a11d40c58539b09ced64921af40c2b",
+      tokenHash: buyerTokenHash,
       expiresAt: "2027-12-31T23:59:59Z",
       createdBy: users[0].id,
       createdAt: nowIso,
@@ -816,6 +817,7 @@ export function generateSeedData(baseToday: string = "2026-11-05") {
     units,
     users,
     buyerLinks,
+    generatedBuyerToken,
     tnaTemplates,
     tnaTemplateItems,
     orders,

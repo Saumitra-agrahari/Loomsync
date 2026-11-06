@@ -225,6 +225,9 @@ async function runSeed() {
     }
 
     console.log("PostgreSQL seed complete!");
+    if (process.env.NODE_ENV !== "production") {
+      console.log(`\n🔑 Local Demo Buyer B Link (token shown once): http://localhost:3000/b?token=${seed.generatedBuyerToken}\n`);
+    }
   } catch (err) {
     console.error("Seed error:", err);
     process.exit(1);

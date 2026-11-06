@@ -3,6 +3,7 @@ import { authenticate, apiError, apiSuccess } from "@/lib/api/response";
 import * as repo from "@/lib/db/repo";
 import { classifyNote } from "@/lib/ai/classifier";
 import { validateImageBuffer, parseBase64Image } from "@/lib/photos/validate";
+import { checkRateLimit, getClientIp } from "@/lib/security/rate-limit";
 
 const batchItemSchema = z.object({
   client_uuid: z.string().min(1, "client_uuid is required"),
@@ -29,6 +30,19 @@ export async function POST(req: Request) {
   const { user } = authResult.auth;
   if (!user.unitId) {
     return apiError("FORBIDDEN", "Supervisor is not assigned to any unit", 403);
+  }
+
+  const clientIp = getClientIp(req);
+  const rateKey = `batch:${user.id || clientIp}`;
+  const rateCheck = checkRateLimit(rateKey, 60, 60);
+  if (!rateCheck.success) {
+    return apiError(
+      "RATE_LIMITED",
+      "Too many batch update requests. Please wait before submitting more updates.",
+      429,
+      undefined,
+      { "Retry-After": String(rateCheck.retryAfterSeconds) }
+    );
   }
 
   try {

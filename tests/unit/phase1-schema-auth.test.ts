@@ -98,7 +98,7 @@ describe("Phase 1: Schema, Migrations, Seed & Auth", () => {
     });
 
     it("hashes buyer token link correctly", () => {
-      const rawToken = "demo-buyer-b-token-1234567890";
+      const rawToken = store.getGeneratedBuyerToken();
       const hashed = hashToken(rawToken);
       const link = store.getBuyerLinkByTokenHash(hashed);
       expect(link).toBeDefined();

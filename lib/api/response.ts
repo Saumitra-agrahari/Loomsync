@@ -25,7 +25,8 @@ export function apiError(
   code: ApiErrorCode,
   message: string,
   status: number = 400,
-  fields?: Record<string, string>
+  fields?: Record<string, string>,
+  headers?: Record<string, string>
 ) {
   return NextResponse.json(
     {
@@ -35,7 +36,10 @@ export function apiError(
         fields,
       },
     },
-    { status }
+    {
+      status,
+      headers,
+    }
   );
 }
 

@@ -37,6 +37,7 @@ class DataStore {
   private warnings: Warning[] = [];
   private notifications: Notification[] = [];
   private auditLogs: AuditLogEntry[] = [];
+  private generatedBuyerToken = "";
   private initialized = false;
 
   constructor() {
@@ -49,6 +50,7 @@ class DataStore {
     this.units = [...data.units];
     this.users = [...data.users];
     this.buyerLinks = [...data.buyerLinks];
+    this.generatedBuyerToken = data.generatedBuyerToken;
     this.tnaTemplates = [...data.tnaTemplates];
     this.tnaTemplateItems = [...data.tnaTemplateItems];
     this.orders = [...data.orders];
@@ -444,6 +446,10 @@ class DataStore {
   // Mock Notifications
   public getNotificationsForBuyer(buyerId: string): Notification[] {
     return this.notifications.filter((n) => n.buyerId === buyerId);
+  }
+
+  public getGeneratedBuyerToken(): string {
+    return this.generatedBuyerToken;
   }
 
   // Audit Log
