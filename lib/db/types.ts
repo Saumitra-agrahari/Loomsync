@@ -108,6 +108,9 @@ export type Photo = {
   id: string;
   orderId: string;
   storageKey: string;
+  imageData?: Buffer | null;
+  mimeType?: string;
+  sizeBytes?: number | null;
   uploadedBy: string;
   takenAt: string;
   visibleToBuyer: boolean;

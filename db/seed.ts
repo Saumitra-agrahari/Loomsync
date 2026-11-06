@@ -180,9 +180,9 @@ async function runSeed() {
       const orderId = toUuid(p.orderId);
       const uploadedBy = toUuid(p.uploadedBy);
       await sql`
-        INSERT INTO photos (id, order_id, storage_key, uploaded_by, taken_at, visible_to_buyer)
-        VALUES (${id}, ${orderId}, ${p.storageKey}, ${uploadedBy}, ${p.takenAt}, ${p.visibleToBuyer})
-        ON CONFLICT (id) DO NOTHING
+        INSERT INTO photos (id, order_id, storage_key, image_data, mime_type, size_bytes, uploaded_by, taken_at, visible_to_buyer)
+        VALUES (${id}, ${orderId}, ${p.storageKey}, ${p.imageData ?? null}, ${p.mimeType ?? 'image/png'}, ${p.sizeBytes ?? null}, ${uploadedBy}, ${p.takenAt}, ${p.visibleToBuyer})
+        ON CONFLICT (id) DO UPDATE SET image_data = EXCLUDED.image_data, mime_type = EXCLUDED.mime_type, size_bytes = EXCLUDED.size_bytes
       `;
     }
 

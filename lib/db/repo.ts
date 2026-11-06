@@ -765,6 +765,8 @@ export async function getPhotosForOrder(orderId: string, buyerOnly: boolean = fa
       id: p.id,
       orderId: p.orderId,
       storageKey: p.storageKey,
+      mimeType: p.mimeType,
+      sizeBytes: p.sizeBytes || undefined,
       uploadedBy: p.uploadedBy,
       takenAt: p.takenAt.toISOString(),
       visibleToBuyer: p.visibleToBuyer,
@@ -772,6 +774,33 @@ export async function getPhotosForOrder(orderId: string, buyerOnly: boolean = fa
   }
   assertNotProductionFallback();
   return store.getPhotosForOrder(orderId, buyerOnly);
+}
+
+export async function getPhotoById(id: string): Promise<Photo | undefined> {
+  const db = getDb();
+  if (db) {
+    const rows = await db
+      .select()
+      .from(schema.photos)
+      .where(eq(schema.photos.id, id));
+    if (rows.length > 0) {
+      const p = rows[0];
+      return {
+        id: p.id,
+        orderId: p.orderId,
+        storageKey: p.storageKey,
+        imageData: (p.imageData as Buffer) || undefined,
+        mimeType: p.mimeType,
+        sizeBytes: p.sizeBytes || undefined,
+        uploadedBy: p.uploadedBy,
+        takenAt: p.takenAt.toISOString(),
+        visibleToBuyer: p.visibleToBuyer,
+      };
+    }
+    return undefined;
+  }
+  assertNotProductionFallback();
+  return store.getPhotoById(id);
 }
 
 export async function addPhoto(photo: Omit<Photo, "id" | "takenAt">): Promise<Photo> {
@@ -782,6 +811,9 @@ export async function addPhoto(photo: Omit<Photo, "id" | "takenAt">): Promise<Ph
       .values({
         orderId: photo.orderId,
         storageKey: photo.storageKey,
+        imageData: photo.imageData || null,
+        mimeType: photo.mimeType || "image/jpeg",
+        sizeBytes: photo.sizeBytes || (photo.imageData ? photo.imageData.length : null),
         uploadedBy: photo.uploadedBy,
         visibleToBuyer: photo.visibleToBuyer ?? true,
       })
@@ -790,6 +822,9 @@ export async function addPhoto(photo: Omit<Photo, "id" | "takenAt">): Promise<Ph
       id: p.id,
       orderId: p.orderId,
       storageKey: p.storageKey,
+      imageData: (p.imageData as Buffer) || undefined,
+      mimeType: p.mimeType,
+      sizeBytes: p.sizeBytes || undefined,
       uploadedBy: p.uploadedBy,
       takenAt: p.takenAt.toISOString(),
       visibleToBuyer: p.visibleToBuyer,

@@ -138,8 +138,15 @@ function BuyerOrderDetailContent() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {order.photos.map((p: any) => (
                     <div key={p.id} className="border border-border rounded-lg overflow-hidden bg-surface p-2 text-center">
-                      <div className="h-28 bg-gray-200 rounded flex items-center justify-center text-textSecondary text-xs font-mono">
-                        📷 {p.storageKey.split("/").pop()}
+                      <div className="h-28 bg-gray-100 rounded overflow-hidden flex items-center justify-center">
+                        <img
+                          src={`/api/photos/${p.id}`}
+                          alt={p.storageKey.split("/").pop() || "Production Photo"}
+                          className="h-full w-full object-cover rounded"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLElement).style.display = "none";
+                          }}
+                        />
                       </div>
                       <span className="text-[11px] text-textSecondary block mt-1">
                         {p.takenAt.split("T")[0]}

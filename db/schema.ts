@@ -10,7 +10,14 @@ import {
   real,
   uniqueIndex,
   index,
+  customType,
 } from "drizzle-orm/pg-core";
+
+export const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType() {
+    return "bytea";
+  },
+});
 import { relations } from "drizzle-orm";
 
 // Enums
@@ -142,6 +149,9 @@ export const photos = pgTable("photos", {
   id: uuid("id").primaryKey().defaultRandom(),
   orderId: uuid("order_id").references(() => orders.id, { onDelete: "restrict" }).notNull(),
   storageKey: text("storage_key").notNull(),
+  imageData: bytea("image_data"),
+  mimeType: text("mime_type").default("image/jpeg").notNull(),
+  sizeBytes: integer("size_bytes"),
   uploadedBy: uuid("uploaded_by").references(() => users.id, { onDelete: "restrict" }).notNull(),
   takenAt: timestamp("taken_at", { withTimezone: true }).defaultNow().notNull(),
   visibleToBuyer: boolean("visible_to_buyer").notNull().default(true),

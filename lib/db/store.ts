@@ -355,6 +355,10 @@ class DataStore {
       .sort((a, b) => (a.takenAt < b.takenAt ? 1 : -1));
   }
 
+  public getPhotoById(id: string): Photo | undefined {
+    return this.photos.find((p) => p.id === id);
+  }
+
   public addPhoto(photo: Omit<Photo, "id" | "takenAt">): Photo {
     const newPhoto: Photo = {
       ...photo,

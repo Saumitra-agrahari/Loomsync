@@ -86,6 +86,7 @@ export async function syncOutbox(): Promise<{ synced: number; failed: number }> 
         qty: item.qty,
         note: item.note || undefined,
         photo_key: item.photoKey || undefined,
+        photo_base64: item.photoBase64 || undefined,
         client_ts: item.clientTs,
       })),
     };

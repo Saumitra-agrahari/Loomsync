@@ -2,6 +2,7 @@ import { z } from "zod";
 import { authenticate, apiError, apiSuccess } from "@/lib/api/response";
 import * as repo from "@/lib/db/repo";
 import { classifyNote } from "@/lib/ai/classifier";
+import { validateImageBuffer, parseBase64Image } from "@/lib/photos/validate";
 
 const batchItemSchema = z.object({
   client_uuid: z.string().min(1, "client_uuid is required"),
@@ -10,6 +11,7 @@ const batchItemSchema = z.object({
   qty: z.number().int().min(0, "qty must be >= 0"),
   note: z.string().max(1000).optional(),
   photo_key: z.string().optional(),
+  photo_base64: z.string().optional(),
   client_ts: z.string().min(1, "client_ts is required"),
 });
 
@@ -82,12 +84,32 @@ export async function POST(req: Request) {
       const updatesForStage = await repo.getDailyUpdatesForStage(stage.id);
       const isCorrection = updatesForStage.some((u) => u.reportedDate === item.reported_date);
 
-      // Handle photo if key provided
+      // Handle photo if base64 or key provided
       let photoId: string | null = null;
-      if (item.photo_key) {
+      if (item.photo_base64 || item.photo_key) {
+        let buffer: Buffer | undefined = undefined;
+        let mimeType: "image/jpeg" | "image/png" | "image/webp" = "image/jpeg";
+        let sizeBytes: number | undefined = undefined;
+
+        if (item.photo_base64) {
+          const raw = parseBase64Image(item.photo_base64);
+          if (raw) {
+            const validation = validateImageBuffer(raw);
+            if (validation.success) {
+              buffer = validation.image.buffer;
+              mimeType = validation.image.mimeType;
+              sizeBytes = validation.image.sizeBytes;
+            }
+          }
+        }
+
+        const storageKey = item.photo_key || `uploads/${stage.orderId}/${Date.now()}.jpg`;
         const photo = await repo.addPhoto({
           orderId: stage.orderId,
-          storageKey: item.photo_key,
+          storageKey,
+          imageData: buffer,
+          mimeType,
+          sizeBytes,
           uploadedBy: user.id,
           visibleToBuyer: true,
         });

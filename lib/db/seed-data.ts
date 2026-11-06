@@ -5,6 +5,7 @@
 
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
+import zlib from "zlib";
 import { addDays, formatDate, isWorkingDay } from "../runrate";
 import type {
   Buyer,
@@ -29,6 +30,64 @@ export function toUuid(str: string): string {
   const h = crypto.createHash("md5").update(str).digest("hex");
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-a${h.slice(17, 20)}-${h.slice(20, 32)}`;
 }
+
+// Generate valid synthetic PNG images (no real people or faces) for progress photos
+export function createSyntheticPng(width: number, height: number, r: number, g: number, b: number): Buffer {
+  const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+  const crcTable: number[] = [];
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    crcTable[n] = c;
+  }
+  function makeChunk(type: string, data: Buffer): Buffer {
+    const len = Buffer.alloc(4);
+    len.writeUInt32BE(data.length, 0);
+    const t = Buffer.from(type, "ascii");
+    const body = Buffer.concat([t, data]);
+    const crc = Buffer.alloc(4);
+    let c = 0xffffffff;
+    for (let i = 0; i < body.length; i++) {
+      c = (c >>> 8) ^ crcTable[(c ^ body[i]) & 0xff];
+    }
+    crc.writeInt32BE((c ^ 0xffffffff) | 0, 0);
+    return Buffer.concat([len, body, crc]);
+  }
+
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr[8] = 8;
+  ihdr[9] = 2; // RGB
+  ihdr[10] = 0;
+  ihdr[11] = 0;
+  ihdr[12] = 0;
+  const ihdrChunk = makeChunk("IHDR", ihdr);
+
+  const raw = Buffer.alloc(height * (1 + width * 3));
+  for (let y = 0; y < height; y++) {
+    const offset = y * (1 + width * 3);
+    raw[offset] = 0;
+    for (let x = 0; x < width; x++) {
+      const px = offset + 1 + x * 3;
+      const stripe = ((x >> 3) + (y >> 3)) % 2 === 0;
+      raw[px] = stripe ? r : Math.max(0, r - 25);
+      raw[px + 1] = stripe ? g : Math.max(0, g - 25);
+      raw[px + 2] = stripe ? b : Math.max(0, b - 25);
+    }
+  }
+  const idatData = zlib.deflateSync(raw);
+  const idatChunk = makeChunk("IDAT", idatData);
+  const iendChunk = makeChunk("IEND", Buffer.alloc(0));
+  return Buffer.concat([signature, ihdrChunk, idatChunk, iendChunk]);
+}
+
+const syntheticPngs = [
+  createSyntheticPng(80, 60, 25, 35, 95),   // 1. Navy single jersey knit fabric swatch
+  createSyntheticPng(80, 60, 230, 230, 235), // 2. White pique knit cotton panel
+  createSyntheticPng(80, 60, 240, 210, 45),  // 3. Yellow kids print panel inspection
+  createSyntheticPng(80, 60, 75, 115, 70),   // 4. Sage rib trim quality assurance
+];
 
 export function generateSeedData(baseToday: string = "2026-11-05") {
   const passwordHash = bcrypt.hashSync("Demo@12345", 10);
@@ -660,14 +719,18 @@ export function generateSeedData(baseToday: string = "2026-11-05") {
             // Check if note exists for this date
             const matchedNote = def.notes?.find((n) => n.date === dateStr);
 
-            // Add photo for recent days
+            // Add photo for recent days with synthetic placeholder image
             let photoId: string | null = null;
             if (idx === count - 1 || idx === count - 3) {
               photoId = `photo-${def.id}-${idx}`;
+              const pngBuf = syntheticPngs[photos.length % syntheticPngs.length];
               photos.push({
                 id: photoId,
                 orderId: def.id,
-                storageKey: `photos/${def.poNo}/${dateStr}.jpg`,
+                storageKey: `photos/${def.poNo}/${dateStr}.png`,
+                imageData: pngBuf,
+                mimeType: "image/png",
+                sizeBytes: pngBuf.length,
                 uploadedBy: users[1].id,
                 takenAt: clientTs,
                 visibleToBuyer: true,
