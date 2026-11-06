@@ -52,6 +52,28 @@ async function runSeed() {
   const sql = postgres(connectionString, { max: 1 });
 
   try {
+    // Truncate application tables before seeding to guarantee a clean slate
+    console.log("Truncating application tables (CASCADE)...");
+    await sql`
+      TRUNCATE TABLE 
+        daily_updates,
+        milestone_date_history,
+        photos,
+        warnings,
+        notifications,
+        audit_log,
+        order_lines,
+        order_stages,
+        orders,
+        buyer_links,
+        tna_template_items,
+        tna_templates,
+        users,
+        units,
+        buyers
+      CASCADE
+    `;
+
     // Insert buyers
     for (const b of seed.buyers) {
       const id = toUuid(b.id);
