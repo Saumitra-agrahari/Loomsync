@@ -11,7 +11,7 @@ describe("Security Basics Hardening", () => {
     const origSecret = process.env.AUTH_SECRET;
 
     try {
-      process.env.NODE_ENV = "production";
+      (process.env as any).NODE_ENV = "production";
 
       // Missing DATABASE_URL throws
       delete process.env.DATABASE_URL;
@@ -31,7 +31,7 @@ describe("Security Basics Hardening", () => {
       process.env.AUTH_SECRET = "a".repeat(32);
       expect(() => validateEnvironment()).not.toThrow();
     } finally {
-      process.env.NODE_ENV = origEnv;
+      (process.env as any).NODE_ENV = origEnv;
       if (origDb) process.env.DATABASE_URL = origDb;
       else delete process.env.DATABASE_URL;
       if (origSecret) process.env.AUTH_SECRET = origSecret;
@@ -59,7 +59,7 @@ describe("Security Basics Hardening", () => {
     const origSecret = process.env.AUTH_SECRET;
 
     try {
-      process.env.NODE_ENV = "production";
+      (process.env as any).NODE_ENV = "production";
 
       // 1. Missing secret throws
       delete process.env.AUTH_SECRET;
@@ -73,7 +73,7 @@ describe("Security Basics Hardening", () => {
       process.env.AUTH_SECRET = "production-super-secure-auth-secret-key-64-bytes-long";
       expect(getAuthSecret()).toBe("production-super-secure-auth-secret-key-64-bytes-long");
     } finally {
-      process.env.NODE_ENV = origEnv;
+      (process.env as any).NODE_ENV = origEnv;
       if (origSecret) process.env.AUTH_SECRET = origSecret;
       else delete process.env.AUTH_SECRET;
     }

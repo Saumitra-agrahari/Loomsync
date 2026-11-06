@@ -17,14 +17,14 @@ const store = new Map<string, RateLimitRecord>();
 if (typeof setInterval !== "undefined") {
   setInterval(() => {
     const now = Date.now();
-    for (const [key, record] of store.entries()) {
+    store.forEach((record, key) => {
       const valid = record.timestamps.filter((t) => now - t < 300000);
       if (valid.length === 0) {
         store.delete(key);
       } else {
         record.timestamps = valid;
       }
-    }
+    });
   }, 300000);
 }
 
