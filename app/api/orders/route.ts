@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { authenticate, apiError, apiSuccess } from "@/lib/api/response";
 import * as repo from "@/lib/db/repo";
-import { addDays, calculateRunRate, formatDate } from "@/lib/runrate";
+import { addDays, calculateRunRate, formatDate, STAGE_PLANNED_DURATION_DAYS } from "@/lib/runrate";
 
 const createOrderSchema = z.object({
   poNo: z.string().trim().min(1, "PO number is required"),
@@ -140,7 +140,7 @@ export async function GET(req: Request) {
       const stageUpdates = currentStage ? await repo.getDailyUpdatesForStage(currentStage.id) : [];
       const downstreamStages = stages
         .filter((s) => s.seq > (currentStage?.seq || 0))
-        .map((s) => ({ stage: s.stage, plannedDurationDays: 3 }));
+        .map((s) => ({ stage: s.stage, plannedDurationDays: STAGE_PLANNED_DURATION_DAYS[s.stage] ?? 2 }));
 
       const runRate = calculateRunRate({
         orderId: order.id,

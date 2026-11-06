@@ -236,6 +236,8 @@ export function generateSeedData(baseToday: string = "2026-11-05") {
     originalExFactoryDate: string;
     currentStage: string;
     stageDone: number;
+    last3Rate?: number; // ASSUMPTION A7: average output rate per day over the last 3 working days
+    isGrey?: boolean;
     lines: Array<{ colour: string; size: string; qty: number }>;
     unitId: string;
     history?: Array<{ field: string; oldDate: string; newDate: string; reason: string; date: string }>;
@@ -244,7 +246,7 @@ export function generateSeedData(baseToday: string = "2026-11-05") {
 
   const seedDefs: OrderSeedDef[] = [
     {
-      // 1. Core Sample 1: Amber
+      // 1. Core Sample 1: Amber (~480/day vs ~520 needed) // ASSUMPTION A7
       id: "ord-b-88213",
       poNo: "B-PO-88213",
       buyerId: buyers[0].id,
@@ -254,6 +256,7 @@ export function generateSeedData(baseToday: string = "2026-11-05") {
       originalExFactoryDate: addDays(baseToday, 15),
       currentStage: "Stitching",
       stageDone: 6800,
+      last3Rate: 480, // ASSUMPTION A7: 480/day vs 520 needed -> AMBER (ratio ~0.92)
       unitId: units[0].id,
       lines: [
         { colour: "Navy", size: "S", qty: 3000 },
@@ -272,7 +275,7 @@ export function generateSeedData(baseToday: string = "2026-11-05") {
       ],
     },
     {
-      // 2. Core Sample 2: Red
+      // 2. Core Sample 2: Red (~400/day vs ~560 needed) // ASSUMPTION A7
       id: "ord-b-88240",
       poNo: "B-PO-88240",
       buyerId: buyers[0].id,
@@ -282,6 +285,7 @@ export function generateSeedData(baseToday: string = "2026-11-05") {
       originalExFactoryDate: addDays(baseToday, 5), // originally 2026-11-10
       currentStage: "Finishing",
       stageDone: 5200,
+      last3Rate: 400, // ASSUMPTION A7: 400/day vs 560 needed -> RED (ratio ~0.71)
       unitId: units[1].id,
       lines: [
         { colour: "White", size: "S", qty: 2000 },
@@ -309,7 +313,7 @@ export function generateSeedData(baseToday: string = "2026-11-05") {
       ],
     },
     {
-      // 3. Core Sample 3: Green
+      // 3. Core Sample 3: Green (~600/day vs ~575 needed) // ASSUMPTION A7
       id: "ord-c-0488",
       poNo: "C-PO-0488",
       buyerId: buyers[1].id,
@@ -319,6 +323,7 @@ export function generateSeedData(baseToday: string = "2026-11-05") {
       originalExFactoryDate: addDays(baseToday, 23),
       currentStage: "Printing",
       stageDone: 3100,
+      last3Rate: 600, // ASSUMPTION A7: 600/day vs 575 needed -> GREEN (ratio ~1.04)
       unitId: units[3].id,
       lines: [
         { colour: "Yellow", size: "4-5Y", qty: 2500 },
@@ -326,7 +331,7 @@ export function generateSeedData(baseToday: string = "2026-11-05") {
         { colour: "Yellow", size: "8-9Y", qty: 4000 },
       ],
     },
-    // ASSUMPTION A7: 8 Invented Orders across both buyers
+    // ASSUMPTION A7: 8 Invented Orders across both buyers (balanced board: exactly 1 RED, 2 AMBER, 7 GREEN, 1 GREY)
     {
       id: "ord-b-88255",
       poNo: "B-PO-88255",
@@ -337,6 +342,7 @@ export function generateSeedData(baseToday: string = "2026-11-05") {
       originalExFactoryDate: addDays(baseToday, 20),
       currentStage: "Cutting",
       stageDone: 4000,
+      last3Rate: 400, // GREEN
       unitId: units[0].id,
       lines: [
         { colour: "Coral", size: "S", qty: 2000 },
@@ -350,10 +356,11 @@ export function generateSeedData(baseToday: string = "2026-11-05") {
       buyerId: buyers[0].id,
       style: "Men's zip hoodie, heather grey",
       totalQty: 5000,
-      exFactoryDate: addDays(baseToday, 11),
-      originalExFactoryDate: addDays(baseToday, 11),
+      exFactoryDate: addDays(baseToday, 14),
+      originalExFactoryDate: addDays(baseToday, 14),
       currentStage: "Stitching",
       stageDone: 2100,
+      last3Rate: 310, // AMBER
       unitId: units[1].id,
       lines: [
         { colour: "Heather Grey", size: "M", qty: 2500 },
@@ -378,7 +385,8 @@ export function generateSeedData(baseToday: string = "2026-11-05") {
       exFactoryDate: addDays(baseToday, 27),
       originalExFactoryDate: addDays(baseToday, 27),
       currentStage: "Cutting",
-      stageDone: 7500,
+      stageDone: 5000,
+      last3Rate: 500, // GREEN
       unitId: units[2].id,
       lines: [
         { colour: "Pink", size: "6Y", qty: 4500 },
@@ -391,10 +399,11 @@ export function generateSeedData(baseToday: string = "2026-11-05") {
       buyerId: buyers[0].id,
       style: "Boys sports jersey, royal blue",
       totalQty: 7500,
-      exFactoryDate: addDays(baseToday, 13),
-      originalExFactoryDate: addDays(baseToday, 13),
-      currentStage: "Stitching",
-      stageDone: 3800,
+      exFactoryDate: addDays(baseToday, 25),
+      originalExFactoryDate: addDays(baseToday, 25),
+      currentStage: "Printing",
+      stageDone: 2500,
+      last3Rate: 450, // GREEN
       unitId: units[0].id,
       lines: [
         { colour: "Royal Blue", size: "S", qty: 3500 },
@@ -409,8 +418,9 @@ export function generateSeedData(baseToday: string = "2026-11-05") {
       totalQty: 15000,
       exFactoryDate: addDays(baseToday, 35),
       originalExFactoryDate: addDays(baseToday, 35),
-      currentStage: "Printing",
+      currentStage: "Cutting",
       stageDone: 8000,
+      last3Rate: 700, // GREEN
       unitId: units[3].id,
       lines: [
         { colour: "Olive", size: "M", qty: 7500 },
@@ -422,11 +432,12 @@ export function generateSeedData(baseToday: string = "2026-11-05") {
       poNo: "C-PO-0501",
       buyerId: buyers[1].id,
       style: "Heavyweight loopback sweatshirt, black",
-      totalQty: 6500,
-      exFactoryDate: addDays(baseToday, 9),
-      originalExFactoryDate: addDays(baseToday, 9),
-      currentStage: "Finishing",
-      stageDone: 3000,
+      totalQty: 8500,
+      exFactoryDate: addDays(baseToday, 22),
+      originalExFactoryDate: addDays(baseToday, 22),
+      currentStage: "Stitching",
+      stageDone: 4500,
+      last3Rate: 550, // GREEN
       unitId: units[2].id,
       lines: [
         { colour: "Black", size: "M", qty: 3500 },
@@ -461,6 +472,7 @@ export function generateSeedData(baseToday: string = "2026-11-05") {
       originalExFactoryDate: addDays(baseToday, 25),
       currentStage: "Stitching",
       stageDone: 5500,
+      last3Rate: 600, // GREEN
       unitId: units[1].id,
       lines: [
         { colour: "Multi", size: "0-3M", qty: 5000 },
@@ -477,6 +489,7 @@ export function generateSeedData(baseToday: string = "2026-11-05") {
       originalExFactoryDate: addDays(baseToday, 4),
       currentStage: "Packing",
       stageDone: 4000,
+      isGrey: true, // GREY: edge case test with <2 updates in last 2 days
       unitId: units[0].id,
       lines: [
         { colour: "Navy/White", size: "M", qty: 2500 },
@@ -529,14 +542,46 @@ export function generateSeedData(baseToday: string = "2026-11-05") {
       const plannedEnd = addDays(def.exFactoryDate, -(item.offsetDaysBeforeExfactory - item.plannedDurationDays));
       const plannedStart = addDays(def.exFactoryDate, -item.offsetDaysBeforeExfactory);
 
-      let actualEnd: string | null = null;
-      if (item.seq - 1 < currentStageIdx) {
-        // Prior stages completed
-        actualEnd = plannedEnd;
-      }
-
       // Unit assignment: printing goes to printing sub, others to unitId
       const assignedUnit = item.stage === "Printing" ? units[3].id : def.unitId;
+
+      let actualEnd: string | null = null;
+      if (item.seq - 1 < currentStageIdx) {
+        // Prior stages completed (consistent completed quantities matching def.totalQty)
+        actualEnd = plannedEnd;
+        const priorDays = [
+          addDays(baseToday, -18 - (currentStageIdx - item.seq) * 4),
+          addDays(baseToday, -17 - (currentStageIdx - item.seq) * 4),
+          addDays(baseToday, -16 - (currentStageIdx - item.seq) * 4),
+        ];
+        const part = Math.floor(def.totalQty / 3);
+        const remainder = def.totalQty - part * 2;
+        const qtys = [part, part, remainder];
+
+        priorDays.forEach((dateStr, pIdx) => {
+          const clientUuid = `uuid-${def.id}-${stageId}-prior-${pIdx}`;
+          const clientTs = `${dateStr}T17:00:00.000Z`;
+          dailyUpdates.push({
+            id: `upd-${def.id}-prior-${item.seq}-${pIdx}`,
+            clientUuid,
+            orderStageId: stageId,
+            unitId: assignedUnit,
+            reportedDate: dateStr,
+            qty: qtys[pIdx],
+            noteOriginal: null,
+            noteLang: null,
+            noteEn: null,
+            reasonCategory: null,
+            aiConfidence: null,
+            categorySource: null,
+            photoId: null,
+            submittedBy: users[1].id,
+            clientTs,
+            receivedAt: clientTs,
+            isCorrection: false,
+          });
+        });
+      }
 
       const orderStageObj: OrderStage = {
         id: stageId,
@@ -552,32 +597,61 @@ export function generateSeedData(baseToday: string = "2026-11-05") {
       };
       orderStages.push(orderStageObj);
 
-      // Populate 14 days of update history for the active stage and completed stages
+      // Populate 14 working days of update history for the active stage
       if (item.seq - 1 === currentStageIdx) {
-        // Active stage: distribute def.stageDone over the last 14 days
-        const workingDaysIn14: string[] = [];
-        for (let d = -13; d <= 0; d++) {
-          const dateStr = addDays(baseToday, d);
-          if (isWorkingDay(dateStr)) {
-            workingDaysIn14.push(dateStr);
+        if (def.isGrey) {
+          // Grey edge case: only 1 update reported 3 working days ago, none in last 2 days
+          const greyDate = addDays(baseToday, -3);
+          const clientUuid = `uuid-${def.id}-${stageId}-${greyDate}`;
+          const clientTs = `${greyDate}T17:30:00.000Z`;
+          dailyUpdates.push({
+            id: `upd-${def.id}-0`,
+            clientUuid,
+            orderStageId: stageId,
+            unitId: assignedUnit,
+            reportedDate: greyDate,
+            qty: def.stageDone,
+            noteOriginal: "ஆட்கள் பற்றாக்குறை",
+            noteLang: "ta",
+            noteEn: "Worker shortage",
+            reasonCategory: "manpower_shortage",
+            aiConfidence: 0.9,
+            categorySource: "ai",
+            photoId: null,
+            submittedBy: users[1].id,
+            clientTs,
+            receivedAt: clientTs,
+            isCorrection: false,
+          });
+        } else {
+          // Find exactly 14 working days leading up to baseToday
+          const workingDaysIn14: string[] = [];
+          for (let d = -22; d <= 0; d++) {
+            const dateStr = addDays(baseToday, d);
+            if (isWorkingDay(dateStr)) {
+              workingDaysIn14.push(dateStr);
+            }
           }
-        }
+          const last14 = workingDaysIn14.slice(-14);
+          const count = last14.length;
 
-        const count = workingDaysIn14.length;
-        if (count > 0) {
-          // Average rate per working day
-          const avgDaily = Math.floor(def.stageDone / count);
-          let cumulative = 0;
+          // Target last 3 days rate (ASSUMPTION A7)
+          const targetLast3Rate = def.last3Rate ?? Math.round(def.stageDone / count);
+          const priorCount = count - 3;
+          const priorTotal = def.stageDone - 3 * targetLast3Rate;
+          const avgPrior = Math.floor(priorTotal / priorCount);
+          let accumPrior = 0;
 
-          workingDaysIn14.forEach((dateStr, idx) => {
-            let dayQty = avgDaily;
-            if (idx === count - 1) {
-              dayQty = def.stageDone - cumulative;
+          last14.forEach((dateStr, idx) => {
+            let dayQty = 0;
+            if (idx >= priorCount) {
+              // Last 3 working days: exact rate to produce required run-rate ratio
+              dayQty = targetLast3Rate;
+            } else if (idx === priorCount - 1) {
+              dayQty = priorTotal - accumPrior;
             } else {
-              // Add minor variation ±15%
-              const jitter = (idx % 3 - 1) * Math.floor(avgDaily * 0.08);
-              dayQty = Math.max(50, avgDaily + jitter);
-              cumulative += dayQty;
+              dayQty = avgPrior;
+              accumPrior += dayQty;
             }
 
             const clientUuid = `uuid-${def.id}-${stageId}-${dateStr}`;

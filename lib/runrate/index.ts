@@ -1,6 +1,14 @@
 // ASSUMPTION A2: 6-day working week (Sunday off); holidays configurable.
 // Run-rate delay engine as a pure function (Architecture.md section 4)
 
+export const STAGE_PLANNED_DURATION_DAYS: Record<string, number> = {
+  Cutting: 3,
+  Printing: 4,
+  Stitching: 5,
+  Finishing: 2,
+  Packing: 1,
+};
+
 export type StageRunRateInput = {
   stage: string;
   targetQty: number;

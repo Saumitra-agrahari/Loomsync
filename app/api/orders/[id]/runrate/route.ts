@@ -1,6 +1,6 @@
 import { authenticate, apiError, apiSuccess } from "@/lib/api/response";
 import * as repo from "@/lib/db/repo";
-import { calculateRunRate } from "@/lib/runrate";
+import { calculateRunRate, STAGE_PLANNED_DURATION_DAYS } from "@/lib/runrate";
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const authResult = authenticate(req, ["merchandiser", "supervisor", "buyer"]);
@@ -40,7 +40,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
   const downstreamStages = stages
     .filter((s) => s.seq > activeStage.seq)
-    .map((s) => ({ stage: s.stage, plannedDurationDays: 3 }));
+    .map((s) => ({ stage: s.stage, plannedDurationDays: STAGE_PLANNED_DURATION_DAYS[s.stage] ?? 2 }));
 
   const stageUpdates = await repo.getDailyUpdatesForStage(activeStage.id);
 
