@@ -1,10 +1,8 @@
-import { defineConfig } from "@neon/config/v1";
-
-export default defineConfig({
+export default {
   // Declare your Neon services here
   auth: false,
   // Branch policy: per-branch tuning
-  branch: (branch) => {
+  branch: (branch: { isDefault: boolean; exists: boolean }) => {
     if (branch.isDefault) {
       // Default branch: no overrides, uses project defaults
       return {};
@@ -17,4 +15,5 @@ export default defineConfig({
     // Existing branch: no changes
     return {};
   },
-});
+};
+
