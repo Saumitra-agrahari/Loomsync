@@ -5,6 +5,9 @@ import fs from "fs";
 import path from "path";
 
 function ensureEnv() {
+  if (process.env.NODE_ENV === "production") {
+    return;
+  }
   if (!process.env.DATABASE_URL) {
     const envPath = path.resolve(process.cwd(), ".env.local");
     if (fs.existsSync(envPath)) {
@@ -28,6 +31,11 @@ export function getDb() {
   ensureEnv();
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        "CRITICAL DATABASE ERROR: DATABASE_URL environment variable is missing in production. In-memory store fallback is strictly forbidden in production."
+      );
+    }
     return null;
   }
   if (!_db) {

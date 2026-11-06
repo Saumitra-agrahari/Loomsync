@@ -27,6 +27,14 @@ export function toUuid(str: string): string {
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-a${h.slice(17, 20)}-${h.slice(20, 32)}`;
 }
 
+export function assertNotProductionFallback(): void {
+  if (process.env.NODE_ENV === "production" && !process.env.DATABASE_URL) {
+    throw new Error(
+      "CRITICAL DATABASE ERROR: DATABASE_URL is missing in production. Falling back to the in-memory store in production is strictly forbidden."
+    );
+  }
+}
+
 // -------------------------------------------------------------
 // Users
 // -------------------------------------------------------------
@@ -54,6 +62,7 @@ export async function getUserByEmail(email: string): Promise<User | undefined> {
     }
     return undefined;
   }
+  assertNotProductionFallback();
   return store.getUserByEmail(email);
 }
 
@@ -81,6 +90,7 @@ export async function getUserById(id: string): Promise<User | undefined> {
     }
     return undefined;
   }
+  assertNotProductionFallback();
   return store.getUserById(id);
 }
 
@@ -98,6 +108,7 @@ export async function getBuyers(): Promise<Buyer[]> {
       createdAt: b.createdAt.toISOString(),
     }));
   }
+  assertNotProductionFallback();
   return store.getBuyers();
 }
 
@@ -116,6 +127,7 @@ export async function getBuyerById(id: string): Promise<Buyer | undefined> {
     }
     return undefined;
   }
+  assertNotProductionFallback();
   return store.getBuyerById(id);
 }
 
@@ -134,6 +146,7 @@ export async function getUnits(): Promise<Unit[]> {
       createdAt: u.createdAt.toISOString(),
     }));
   }
+  assertNotProductionFallback();
   return store.getUnits();
 }
 
@@ -153,6 +166,7 @@ export async function getUnitById(id: string): Promise<Unit | undefined> {
     }
     return undefined;
   }
+  assertNotProductionFallback();
   return store.getUnitById(id);
 }
 
@@ -169,6 +183,7 @@ export async function getTemplates(): Promise<TnaTemplate[]> {
       createdAt: t.createdAt.toISOString(),
     }));
   }
+  assertNotProductionFallback();
   return store.getTemplates();
 }
 
@@ -189,6 +204,7 @@ export async function getTemplateItems(templateId: string): Promise<TnaTemplateI
       plannedDurationDays: item.plannedDurationDays,
     }));
   }
+  assertNotProductionFallback();
   return store.getTemplateItems(templateId);
 }
 
@@ -212,6 +228,7 @@ export async function getOrders(): Promise<Order[]> {
       createdAt: o.createdAt.toISOString(),
     }));
   }
+  assertNotProductionFallback();
   return store.getOrders();
 }
 
@@ -236,6 +253,7 @@ export async function getOrderById(id: string): Promise<Order | undefined> {
     }
     return undefined;
   }
+  assertNotProductionFallback();
   return store.getOrderById(id);
 }
 
@@ -263,6 +281,7 @@ export async function getOrderByBuyerAndPo(buyerId: string, poNo: string): Promi
     }
     return undefined;
   }
+  assertNotProductionFallback();
   return store.getOrderByBuyerAndPo(buyerId, poNo);
 }
 
@@ -278,6 +297,7 @@ export async function getOrderLines(orderId: string): Promise<OrderLine[]> {
       qty: l.qty,
     }));
   }
+  assertNotProductionFallback();
   return store.getOrderLines(orderId);
 }
 
@@ -302,6 +322,7 @@ export async function getOrderStages(orderId: string): Promise<OrderStage[]> {
       actualEnd: s.actualEnd || undefined,
     }));
   }
+  assertNotProductionFallback();
   return store.getOrderStages(orderId);
 }
 
@@ -326,6 +347,7 @@ export async function getOrderStageById(stageId: string): Promise<OrderStage | u
     }
     return undefined;
   }
+  assertNotProductionFallback();
   return store.getOrderStageById(stageId);
 }
 
@@ -404,6 +426,7 @@ export async function createOrder(params: {
       createdAt: insertedOrder.createdAt.toISOString(),
     };
   }
+  assertNotProductionFallback();
   return store.createOrder(params);
 }
 
@@ -442,6 +465,7 @@ export async function updateOrderExFactoryDate(params: {
     order.exFactoryDate = params.newDate;
     return order;
   }
+  assertNotProductionFallback();
   return store.updateOrderExFactoryDate(params);
 }
 
@@ -478,6 +502,7 @@ export async function updateStageDate(params: {
     stage.currentEnd = params.newEnd;
     return stage;
   }
+  assertNotProductionFallback();
   return store.updateStageDate(params);
 }
 
@@ -501,6 +526,7 @@ export async function getMilestoneHistory(orderId: string): Promise<MilestoneDat
       changedAt: h.changedAt.toISOString(),
     }));
   }
+  assertNotProductionFallback();
   return store.getMilestoneHistory(orderId);
 }
 
@@ -535,6 +561,7 @@ export async function getDailyUpdatesForStage(stageId: string): Promise<DailyUpd
       isCorrection: u.isCorrection,
     }));
   }
+  assertNotProductionFallback();
   return store.getDailyUpdatesForStage(stageId);
 }
 
@@ -570,6 +597,7 @@ export async function getDailyUpdatesForOrder(orderId: string): Promise<DailyUpd
       isCorrection: u.isCorrection,
     }));
   }
+  assertNotProductionFallback();
   return store.getDailyUpdatesForOrder(orderId);
 }
 
@@ -605,6 +633,7 @@ export async function getDailyUpdateByClientUuid(clientUuid: string): Promise<Da
     }
     return undefined;
   }
+  assertNotProductionFallback();
   return store.getDailyUpdateByClientUuid(clientUuid);
 }
 
@@ -664,6 +693,7 @@ export async function addDailyUpdate(update: Omit<DailyUpdate, "id" | "receivedA
 
     return { status: "created", record };
   }
+  assertNotProductionFallback();
   return store.addDailyUpdate(update);
 }
 
@@ -712,6 +742,7 @@ export async function overrideUpdateCategory(params: {
       isCorrection: u.isCorrection,
     };
   }
+  assertNotProductionFallback();
   return store.overrideUpdateCategory(params);
 }
 
@@ -739,6 +770,7 @@ export async function getPhotosForOrder(orderId: string, buyerOnly: boolean = fa
       visibleToBuyer: p.visibleToBuyer,
     }));
   }
+  assertNotProductionFallback();
   return store.getPhotosForOrder(orderId, buyerOnly);
 }
 
@@ -763,6 +795,7 @@ export async function addPhoto(photo: Omit<Photo, "id" | "takenAt">): Promise<Ph
       visibleToBuyer: p.visibleToBuyer,
     };
   }
+  assertNotProductionFallback();
   return store.addPhoto(photo);
 }
 
@@ -793,6 +826,7 @@ export async function getWarnings(status?: Warning["status"]): Promise<Warning[]
       dismissReason: w.dismissReason || undefined,
     }));
   }
+  assertNotProductionFallback();
   return store.getWarnings(status);
 }
 
@@ -821,6 +855,7 @@ export async function getWarningById(id: string): Promise<Warning | undefined> {
     }
     return undefined;
   }
+  assertNotProductionFallback();
   return store.getWarningById(id);
 }
 
@@ -852,6 +887,7 @@ export async function getWarningsForOrder(orderId: string, buyerOnly: boolean = 
       dismissReason: w.dismissReason || undefined,
     }));
   }
+  assertNotProductionFallback();
   return store.getWarningsForOrder(orderId, buyerOnly);
 }
 
@@ -903,6 +939,7 @@ export async function confirmWarning(warningId: string, decidedBy: string): Prom
       dismissReason: w.dismissReason || undefined,
     };
   }
+  assertNotProductionFallback();
   return store.confirmWarning(warningId, decidedBy);
 }
 
@@ -947,6 +984,7 @@ export async function dismissWarning(
       dismissReason: w.dismissReason || undefined,
     };
   }
+  assertNotProductionFallback();
   return store.dismissWarning(warningId, decidedBy, dismissReason);
 }
 
@@ -974,6 +1012,7 @@ export async function getBuyerLinkByTokenHash(tokenHash: string): Promise<BuyerL
     }
     return undefined;
   }
+  assertNotProductionFallback();
   return store.getBuyerLinkByTokenHash(tokenHash);
 }
 
@@ -1004,6 +1043,7 @@ export async function createBuyerLink(
       createdAt: l.createdAt.toISOString(),
     };
   }
+  assertNotProductionFallback();
   return store.createBuyerLink(buyerId, tokenHash, expiresAt, createdBy);
 }
 
@@ -1017,6 +1057,7 @@ export async function revokeBuyerLink(linkId: string): Promise<boolean> {
       .returning();
     return rows.length > 0;
   }
+  assertNotProductionFallback();
   return store.revokeBuyerLink(linkId);
 }
 
@@ -1045,5 +1086,6 @@ export async function logAudit(
     }
     return;
   }
+  assertNotProductionFallback();
   store.logAudit(actorId, action, entity, entityId, meta);
 }
