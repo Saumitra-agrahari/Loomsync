@@ -1,5 +1,5 @@
 import { authenticate, apiError, apiSuccess } from "@/lib/api/response";
-import { store } from "@/lib/db/store";
+import * as repo from "@/lib/db/repo";
 import { calculateRunRate } from "@/lib/runrate";
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
@@ -7,7 +7,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   if ("response" in authResult) return authResult.response;
 
   const { id } = params;
-  const order = store.getOrderById(id);
+  const order = await repo.getOrderById(id);
   if (!order) {
     return apiError("NOT_FOUND", "Order not found", 404);
   }
@@ -17,7 +17,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     return apiError("NOT_FOUND", "Order not found", 404);
   }
 
-  const stages = store.getOrderStages(order.id);
+  const stages = await repo.getOrderStages(order.id);
   if (stages.length === 0) {
     return apiError("NOT_FOUND", "No stages found for this order", 404);
   }
@@ -28,7 +28,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
   for (let i = 0; i < stages.length; i++) {
     const s = stages[i];
-    const updates = store.getDailyUpdatesForStage(s.id);
+    const updates = await repo.getDailyUpdatesForStage(s.id);
     const done = updates.reduce((acc, u) => acc + u.qty, 0);
 
     if (done < s.targetQty || i === stages.length - 1) {
@@ -42,7 +42,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     .filter((s) => s.seq > activeStage.seq)
     .map((s) => ({ stage: s.stage, plannedDurationDays: 3 }));
 
-  const stageUpdates = store.getDailyUpdatesForStage(activeStage.id);
+  const stageUpdates = await repo.getDailyUpdatesForStage(activeStage.id);
 
   const result = calculateRunRate({
     orderId: order.id,

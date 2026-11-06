@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { authenticate, apiError, apiSuccess } from "@/lib/api/response";
-import { store } from "@/lib/db/store";
+import * as repo from "@/lib/db/repo";
 
 const dismissSchema = z.object({
   reason: z.string().trim().min(1, "Dismiss reason is required"),
@@ -11,7 +11,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if ("response" in authResult) return authResult.response;
 
   const { id } = params;
-  const warning = store.getWarningById(id);
+  const warning = await repo.getWarningById(id);
   if (!warning) {
     return apiError("NOT_FOUND", "Warning not found", 404);
   }
@@ -27,8 +27,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       return apiError("VALIDATION", "Dismiss reason is mandatory", 400);
     }
 
-    const dismissed = store.dismissWarning(warning.id, authResult.auth.user.id, parsed.data.reason);
-    store.logAudit(authResult.auth.user.id, "dismiss_warning", "warnings", warning.id, {
+    const dismissed = await repo.dismissWarning(warning.id, authResult.auth.user.id, parsed.data.reason);
+    await repo.logAudit(authResult.auth.user.id, "dismiss_warning", "warnings", warning.id, {
       orderId: warning.orderId,
       reason: parsed.data.reason,
     });

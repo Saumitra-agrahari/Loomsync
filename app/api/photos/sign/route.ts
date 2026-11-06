@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { authenticate, apiError, apiSuccess } from "@/lib/api/response";
-import { store } from "@/lib/db/store";
+import * as repo from "@/lib/db/repo";
 
 const signPhotoSchema = z.object({
   order_id: z.string().min(1, "order_id is required"),
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     }
 
     const { order_id, mime_type } = parsed.data;
-    const order = store.getOrderById(order_id);
+    const order = await repo.getOrderById(order_id);
     if (!order) {
       return apiError("NOT_FOUND", "Order not found", 404);
     }

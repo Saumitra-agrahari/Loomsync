@@ -120,17 +120,17 @@ export function getAuthContextFromRequest(req: Request): AuthContext | null {
   if (!payload) return null;
 
   const user = store.getUserById(payload.userId);
-  if (!user || !user.active) return null;
+  if (user && !user.active) return null;
 
   return {
     user: {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      buyerId: user.buyerId,
-      unitId: user.unitId,
-      locale: user.locale,
+      id: user?.id || payload.userId,
+      email: user?.email || payload.email,
+      name: user?.name || payload.name,
+      role: (user?.role || payload.role) as UserRole,
+      buyerId: user?.buyerId !== undefined ? user.buyerId : payload.buyerId,
+      unitId: user?.unitId !== undefined ? user.unitId : payload.unitId,
+      locale: (user?.locale || payload.locale) as UserLocale,
     },
     isBuyerToken: false,
   };

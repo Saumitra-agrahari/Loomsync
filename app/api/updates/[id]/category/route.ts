@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { authenticate, apiError, apiSuccess } from "@/lib/api/response";
-import { store } from "@/lib/db/store";
+import * as repo from "@/lib/db/repo";
 import { reasonCategoryEnum } from "@/lib/ai/classifier";
 
 const overrideCategorySchema = z.object({
@@ -20,7 +20,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       return apiError("VALIDATION", "Invalid reason category enum value", 400);
     }
 
-    const updated = store.overrideUpdateCategory({
+    const updated = await repo.overrideUpdateCategory({
       updateId: id,
       category: parsed.data.category,
       changedBy: authResult.auth.user.id,

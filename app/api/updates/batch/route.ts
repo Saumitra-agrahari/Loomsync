@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { authenticate, apiError, apiSuccess } from "@/lib/api/response";
-import { store } from "@/lib/db/store";
+import * as repo from "@/lib/db/repo";
 import { classifyNote } from "@/lib/ai/classifier";
 
 const batchItemSchema = z.object({
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
     }> = [];
 
     for (const item of parsed.data.updates) {
-      const stage = store.getOrderStageById(item.order_stage_id);
+      const stage = await repo.getOrderStageById(item.order_stage_id);
       if (!stage) {
         results.push({
           client_uuid: item.client_uuid,
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
       }
 
       // Check if update with this client_uuid already exists (idempotency)
-      const existing = store.getDailyUpdateByClientUuid(item.client_uuid);
+      const existing = await repo.getDailyUpdateByClientUuid(item.client_uuid);
       if (existing) {
         results.push({
           client_uuid: item.client_uuid,
@@ -79,13 +79,13 @@ export async function POST(req: Request) {
       }
 
       // Check if another update already exists for this stage & date -> marks correction
-      const updatesForStage = store.getDailyUpdatesForStage(stage.id);
+      const updatesForStage = await repo.getDailyUpdatesForStage(stage.id);
       const isCorrection = updatesForStage.some((u) => u.reportedDate === item.reported_date);
 
       // Handle photo if key provided
       let photoId: string | null = null;
       if (item.photo_key) {
-        const photo = store.addPhoto({
+        const photo = await repo.addPhoto({
           orderId: stage.orderId,
           storageKey: item.photo_key,
           uploadedBy: user.id,
@@ -100,7 +100,7 @@ export async function POST(req: Request) {
       const noteLang = noteOriginal ? (isTamil ? "ta" : "en") : null;
 
       // Add to append-only daily_updates
-      const saveResult = store.addDailyUpdate({
+      const saveResult = await repo.addDailyUpdate({
         clientUuid: item.client_uuid,
         orderStageId: stage.id,
         unitId: stage.unitId,
@@ -121,7 +121,7 @@ export async function POST(req: Request) {
       // Asynchronously trigger classification if note is present (does not block response)
       if (noteOriginal) {
         classifyNote(noteOriginal)
-          .then((aiResult) => {
+          .then(async (aiResult) => {
             saveResult.record.noteEn = aiResult.translation;
             saveResult.record.reasonCategory = aiResult.category;
             saveResult.record.aiConfidence = aiResult.confidence;

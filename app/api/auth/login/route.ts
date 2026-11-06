@@ -1,6 +1,6 @@
 import { z } from "zod";
 import bcrypt from "bcryptjs";
-import { store } from "@/lib/db/store";
+import * as repo from "@/lib/db/repo";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { createSessionCookie, type SessionPayload } from "@/lib/auth/session";
 
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     }
 
     const { email, password } = parsed.data;
-    const user = store.getUserByEmail(email);
+    const user = await repo.getUserByEmail(email);
 
     // Generic error message to prevent user enumeration
     if (!user || !user.active) {

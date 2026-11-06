@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { authenticate, apiError, apiSuccess } from "@/lib/api/response";
-import { store } from "@/lib/db/store";
+import * as repo from "@/lib/db/repo";
 
 const updateDateSchema = z.object({
   field: z.enum(["ex_factory_date", "current_end"]),
@@ -14,7 +14,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if ("response" in authResult) return authResult.response;
 
   const { id } = params;
-  const order = store.getOrderById(id);
+  const order = await repo.getOrderById(id);
   if (!order) {
     return apiError("NOT_FOUND", "Order not found", 404);
   }
@@ -33,14 +33,14 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const { field, newDate, reason, stageId } = parsed.data;
 
     if (field === "ex_factory_date") {
-      const updatedOrder = store.updateOrderExFactoryDate({
+      const updatedOrder = await repo.updateOrderExFactoryDate({
         orderId: order.id,
         newDate,
         reason,
         changedBy: authResult.auth.user.id,
       });
 
-      store.logAudit(authResult.auth.user.id, "update_ex_factory_date", "orders", order.id, {
+      await repo.logAudit(authResult.auth.user.id, "update_ex_factory_date", "orders", order.id, {
         oldDate: order.exFactoryDate,
         newDate,
         reason,
@@ -51,14 +51,14 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       if (!stageId) {
         return apiError("VALIDATION", "stageId is required when updating stage end date", 400);
       }
-      const updatedStage = store.updateStageDate({
+      const updatedStage = await repo.updateStageDate({
         stageId,
         newEnd: newDate,
         reason,
         changedBy: authResult.auth.user.id,
       });
 
-      store.logAudit(authResult.auth.user.id, "update_stage_date", "order_stages", stageId, {
+      await repo.logAudit(authResult.auth.user.id, "update_stage_date", "order_stages", stageId, {
         newEnd: newDate,
         reason,
       });

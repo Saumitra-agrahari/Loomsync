@@ -1,5 +1,5 @@
 import { authenticate, apiError, apiSuccess } from "@/lib/api/response";
-import { store } from "@/lib/db/store";
+import * as repo from "@/lib/db/repo";
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const authResult = authenticate(req, ["buyer"]);
@@ -11,7 +11,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   }
 
   const { id } = params;
-  const order = store.getOrderById(id);
+  const order = await repo.getOrderById(id);
 
   // Strict Buyer Isolation:
   // If order does not exist OR belongs to another buyer, return 404 Not Found
@@ -19,39 +19,43 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     return apiError("NOT_FOUND", "Order not found", 404);
   }
 
-  const buyer = store.getBuyerById(order.buyerId);
-  const lines = store.getOrderLines(order.id);
-  const stages = store.getOrderStages(order.id);
+  const buyer = await repo.getBuyerById(order.buyerId);
+  const lines = await repo.getOrderLines(order.id);
+  const stages = await repo.getOrderStages(order.id);
   const totalQty = lines.reduce((acc, l) => acc + l.qty, 0);
 
   // Filtered stages for buyer: unitId and unitName are EXCLUDED (ASSUMPTION A4/F7)
-  const milestoneTimeline = stages.map((s) => {
-    const rawUpdates = store.getDailyUpdatesForStage(s.id);
-    const stageDone = rawUpdates.reduce((acc, u) => acc + u.qty, 0);
+  const milestoneTimeline = await Promise.all(
+    stages.map(async (s) => {
+      const rawUpdates = await repo.getDailyUpdatesForStage(s.id);
+      const stageDone = rawUpdates.reduce((acc, u) => acc + u.qty, 0);
 
-    return {
-      id: s.id,
-      stage: s.stage,
-      seq: s.seq,
-      targetQty: s.targetQty,
-      stageDone,
-      percentDone: Math.min(100, Math.round((stageDone / s.targetQty) * 100)),
-      plannedStart: s.plannedStart,
-      plannedEnd: s.plannedEnd,
-      currentEnd: s.currentEnd,
-      actualEnd: s.actualEnd,
-    };
-  });
+      return {
+        id: s.id,
+        stage: s.stage,
+        seq: s.seq,
+        targetQty: s.targetQty,
+        stageDone,
+        percentDone: Math.min(100, Math.round((stageDone / s.targetQty) * 100)),
+        plannedStart: s.plannedStart,
+        plannedEnd: s.plannedEnd,
+        currentEnd: s.currentEnd,
+        actualEnd: s.actualEnd,
+      };
+    })
+  );
 
   // Progress photos visible to buyer
-  const photos = store.getPhotosForOrder(order.id, true).map((p) => ({
+  const rawPhotos = await repo.getPhotosForOrder(order.id, true);
+  const photos = rawPhotos.map((p) => ({
     id: p.id,
     storageKey: p.storageKey,
     takenAt: p.takenAt,
   }));
 
   // Warnings: confirmed warnings ONLY (unconfirmed/draft are strictly excluded!)
-  const confirmedWarnings = store.getWarningsForOrder(order.id, true).map((w) => ({
+  const rawWarnings = await repo.getWarningsForOrder(order.id, true);
+  const confirmedWarnings = rawWarnings.map((w) => ({
     id: w.id,
     slipDays: w.slipDays,
     requiredRate: w.requiredRate,
@@ -61,7 +65,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   }));
 
   // Date change history
-  const history = store.getMilestoneHistory(order.id).map((h) => ({
+  const rawHistory = await repo.getMilestoneHistory(order.id);
+  const history = rawHistory.map((h) => ({
     field: h.field,
     oldDate: h.oldDate,
     newDate: h.newDate,

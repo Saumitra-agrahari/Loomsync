@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { authenticate, apiError, apiSuccess } from "@/lib/api/response";
-import { store } from "@/lib/db/store";
+import * as repo from "@/lib/db/repo";
 import { hashToken } from "@/lib/auth/session";
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
@@ -8,7 +8,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if ("response" in authResult) return authResult.response;
 
   const buyerId = params.id;
-  const buyer = store.getBuyerById(buyerId);
+  const buyer = await repo.getBuyerById(buyerId);
   if (!buyer) {
     return apiError("NOT_FOUND", "Buyer not found", 404);
   }
@@ -20,9 +20,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   // Default expiry: 90 days
   const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
 
-  const link = store.createBuyerLink(buyer.id, tokenHash, expiresAt, authResult.auth.user.id);
+  const link = await repo.createBuyerLink(buyer.id, tokenHash, expiresAt, authResult.auth.user.id);
 
-  store.logAudit(authResult.auth.user.id, "create_buyer_link", "buyer_links", link.id, {
+  await repo.logAudit(authResult.auth.user.id, "create_buyer_link", "buyer_links", link.id, {
     buyerId: buyer.id,
     expiresAt,
   });

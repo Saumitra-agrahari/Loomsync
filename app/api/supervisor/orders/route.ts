@@ -1,5 +1,5 @@
 import { authenticate, apiError, apiSuccess } from "@/lib/api/response";
-import { store } from "@/lib/db/store";
+import * as repo from "@/lib/db/repo";
 import { formatDate } from "@/lib/runrate";
 
 export async function GET(req: Request) {
@@ -11,17 +11,18 @@ export async function GET(req: Request) {
     return apiError("FORBIDDEN", "Supervisor is not assigned to any unit", 403);
   }
 
-  const allOrders = store.getOrders().filter((o) => o.status === "open");
+  const rawOrders = await repo.getOrders();
+  const allOrders = rawOrders.filter((o) => o.status === "open");
   const todayStr = "2026-11-05"; // baseline today
 
   const supervisorOrders: any[] = [];
 
   for (const order of allOrders) {
-    const stages = store.getOrderStages(order.id);
+    const stages = await repo.getOrderStages(order.id);
     const unitStages = stages.filter((s) => s.unitId === user.unitId);
 
     for (const stage of unitStages) {
-      const updates = store.getDailyUpdatesForStage(stage.id);
+      const updates = await repo.getDailyUpdatesForStage(stage.id);
       const stageDone = updates.reduce((acc, u) => acc + u.qty, 0);
       const remaining = Math.max(0, stage.targetQty - stageDone);
 

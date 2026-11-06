@@ -1,6 +1,6 @@
 import ExcelJS from "exceljs";
 import { authenticate, apiError } from "@/lib/api/response";
-import { store } from "@/lib/db/store";
+import * as repo from "@/lib/db/repo";
 
 export async function GET(req: Request) {
   const authResult = authenticate(req, ["merchandiser", "buyer"]);
@@ -23,15 +23,17 @@ export async function GET(req: Request) {
     targetBuyerId = user.buyerId;
   } else {
     // Merchandiser can pick any buyer or defaults to first
-    targetBuyerId = requestedBuyerId || store.getBuyers()[0].id;
+    const buyers = await repo.getBuyers();
+    targetBuyerId = requestedBuyerId || buyers[0]?.id || "";
   }
 
-  const buyer = store.getBuyerById(targetBuyerId);
+  const buyer = await repo.getBuyerById(targetBuyerId);
   if (!buyer) {
     return apiError("NOT_FOUND", "Buyer not found", 404);
   }
 
-  const orders = store.getOrders().filter((o) => o.buyerId === targetBuyerId);
+  const allOrders = await repo.getOrders();
+  const orders = allOrders.filter((o) => o.buyerId === targetBuyerId);
 
   // Generate Excel workbook
   const workbook = new ExcelJS.Workbook();
@@ -60,15 +62,15 @@ export async function GET(req: Request) {
   };
 
   for (const order of orders) {
-    const lines = store.getOrderLines(order.id);
-    const stages = store.getOrderStages(order.id);
+    const lines = await repo.getOrderLines(order.id);
+    const stages = await repo.getOrderStages(order.id);
     const totalQty = lines.reduce((acc, l) => acc + l.qty, 0);
 
     let activeStage = stages[0];
     let totalDone = 0;
     for (let i = 0; i < stages.length; i++) {
       const s = stages[i];
-      const updates = store.getDailyUpdatesForStage(s.id);
+      const updates = await repo.getDailyUpdatesForStage(s.id);
       const stageDone = updates.reduce((acc, u) => acc + u.qty, 0);
       if (stageDone < s.targetQty || i === stages.length - 1) {
         activeStage = s;
@@ -77,7 +79,7 @@ export async function GET(req: Request) {
       }
     }
 
-    const confirmedWarnings = store.getWarningsForOrder(order.id, true);
+    const confirmedWarnings = await repo.getWarningsForOrder(order.id, true);
     const delayNotice =
       confirmedWarnings.length > 0 ? `Delayed by ${confirmedWarnings[0].slipDays} days` : "On Schedule";
 
@@ -86,9 +88,9 @@ export async function GET(req: Request) {
       style: order.style,
       exFactory: order.exFactoryDate,
       totalQty,
-      stage: activeStage.stage,
+      stage: activeStage?.stage || "Cutting",
       stageDone: totalDone,
-      progress: `${Math.min(100, Math.round((totalDone / activeStage.targetQty) * 100))}%`,
+      progress: `${Math.min(100, Math.round((totalDone / (activeStage?.targetQty || 1)) * 100))}%`,
       delay: delayNotice,
     });
   }
