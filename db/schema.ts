@@ -251,3 +251,34 @@ export const dailyUpdatesRelations = relations(dailyUpdates, ({ one }) => ({
   submitter: one(users, { fields: [dailyUpdates.submittedBy], references: [users.id] }),
   photo: one(photos, { fields: [dailyUpdates.photoId], references: [photos.id] }),
 }));
+
+export const orderLinesRelations = relations(orderLines, ({ one }) => ({
+  order: one(orders, { fields: [orderLines.orderId], references: [orders.id] }),
+}));
+
+export const warningsRelations = relations(warnings, ({ one }) => ({
+  order: one(orders, { fields: [warnings.orderId], references: [orders.id] }),
+  orderStage: one(orderStages, { fields: [warnings.orderStageId], references: [orderStages.id] }),
+  decider: one(users, { fields: [warnings.decidedBy], references: [users.id] }),
+}));
+
+export const photosRelations = relations(photos, ({ one }) => ({
+  order: one(orders, { fields: [photos.orderId], references: [orders.id] }),
+  uploader: one(users, { fields: [photos.uploadedBy], references: [users.id] }),
+}));
+
+export const milestoneDateHistoryRelations = relations(milestoneDateHistory, ({ one }) => ({
+  order: one(orders, { fields: [milestoneDateHistory.orderId], references: [orders.id] }),
+  orderStage: one(orderStages, { fields: [milestoneDateHistory.orderStageId], references: [orderStages.id] }),
+  changer: one(users, { fields: [milestoneDateHistory.changedBy], references: [users.id] }),
+}));
+
+export const buyerLinksRelations = relations(buyerLinks, ({ one }) => ({
+  buyer: one(buyers, { fields: [buyerLinks.buyerId], references: [buyers.id] }),
+  creator: one(users, { fields: [buyerLinks.createdBy], references: [users.id] }),
+}));
+
+export const usersRelations = relations(users, ({ one }) => ({
+  buyer: one(buyers, { fields: [users.buyerId], references: [buyers.id] }),
+  unit: one(units, { fields: [users.unitId], references: [units.id] }),
+}));

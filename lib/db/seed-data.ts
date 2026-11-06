@@ -4,6 +4,7 @@
 // ASSUMPTION A2: 6-day working week (Sunday off).
 
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { addDays, formatDate, isWorkingDay } from "../runrate";
 import type {
   Buyer,
@@ -20,6 +21,14 @@ import type {
   Warning,
   BuyerLink,
 } from "./types";
+
+export function toUuid(str: string): string {
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)) {
+    return str.toLowerCase();
+  }
+  const h = crypto.createHash("md5").update(str).digest("hex");
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-a${h.slice(17, 20)}-${h.slice(20, 32)}`;
+}
 
 export function generateSeedData(baseToday: string = "2026-11-05") {
   const passwordHash = bcrypt.hashSync("Demo@12345", 10);
