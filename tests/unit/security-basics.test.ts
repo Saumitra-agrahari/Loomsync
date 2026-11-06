@@ -2,8 +2,42 @@ import { describe, it, expect } from "vitest";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 import { getAuthSecret } from "@/lib/auth/session";
 import { generateSeedData } from "@/lib/db/seed-data";
+import { validateEnvironment } from "@/lib/env";
 
 describe("Security Basics Hardening", () => {
+  it("validates environment variables in production", () => {
+    const origEnv = process.env.NODE_ENV;
+    const origDb = process.env.DATABASE_URL;
+    const origSecret = process.env.AUTH_SECRET;
+
+    try {
+      process.env.NODE_ENV = "production";
+
+      // Missing DATABASE_URL throws
+      delete process.env.DATABASE_URL;
+      process.env.AUTH_SECRET = "a".repeat(32);
+      expect(() => validateEnvironment()).toThrow(/DATABASE_URL/);
+
+      // Missing AUTH_SECRET throws
+      process.env.DATABASE_URL = "postgres://localhost/test";
+      delete process.env.AUTH_SECRET;
+      expect(() => validateEnvironment()).toThrow(/AUTH_SECRET/);
+
+      // Short AUTH_SECRET throws
+      process.env.AUTH_SECRET = "too-short";
+      expect(() => validateEnvironment()).toThrow(/at least 32 characters/);
+
+      // Valid environment passes
+      process.env.AUTH_SECRET = "a".repeat(32);
+      expect(() => validateEnvironment()).not.toThrow();
+    } finally {
+      process.env.NODE_ENV = origEnv;
+      if (origDb) process.env.DATABASE_URL = origDb;
+      else delete process.env.DATABASE_URL;
+      if (origSecret) process.env.AUTH_SECRET = origSecret;
+      else delete process.env.AUTH_SECRET;
+    }
+  });
   it("enforces in-memory sliding-window rate limit", () => {
     const key = `test-ip-${Date.now()}`;
     // 5 attempts allowed in 60s
