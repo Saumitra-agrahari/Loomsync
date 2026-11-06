@@ -62,6 +62,10 @@ Costing, invoicing, export documents, fabric inventory, attendance/payroll. Paym
 - **A8** Tamil voice input uses the browser speech API where supported; text is the fallback.
 - **A9** Image uploads are compressed client-side to ≤ 300 KB before transmission; object storage keys are structured by PO and timestamp.
 - **A10** Fallback keyword classification uses verified Tiruppur garment terminology (பழுது, துணி, ஆட்கள், மின்சாரம்) and honestly marks category_source as fallback with confidence ~0.70–0.75.
+- **A11** Photos are compressed client-side (≤ 300 KB; JPEG/PNG/WebP validated by size and MIME magic bytes), stored directly in PostgreSQL (`photos.image_data` `bytea`), and served through `/api/photos/[id]` strictly scoped to supervisor (own unit), merchandiser, and buyer (own orders with `visible_to_buyer === true`).
+- **A12** Pluggable AI classifier supports both `AI_PROVIDER = "nvidia"` (OpenAI-compatible chat completions via plain fetch with 8s timeout) and `AI_PROVIDER = "anthropic"`. Safe JSON extraction handles markdown/text wraps, and honest fallback (`category_source = "fallback"`) handles 429/5xx/timeouts/unsupported models without blocking update creation.
+- **A13** Security rate-limiting uses sliding-window in-memory tracking per serverless instance (5 attempts/min on `/api/auth/login`, 60 updates/min on `/api/updates/batch`).
+- **A14** Demo buyer access tokens are 32-byte cryptographic random hex strings generated at seed time, stored as SHA-256 hashes in `buyer_tokens`, and displayed in console during non-production seed runs.
 
 ## 7. Build plan (7 days, solo)
 | Day | Output |
