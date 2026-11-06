@@ -97,13 +97,54 @@ async function run() {
 
     const ordersData = await ordersRes.json();
     console.log(`✅ GET /api/orders returned ${ordersData.orders.length} orders.`);
-    console.log(`Status summary:`, JSON.stringify(ordersData.summary));
+    console.log(`Board Status Summary:`, JSON.stringify(ordersData.summary));
 
-    const statusCounts: Record<string, number> = {};
-    for (const o of ordersData.orders.slice(0, 5)) {
-      statusCounts[o.runRate.status] = (statusCounts[o.runRate.status] || 0) + 1;
-      console.log(`  - PO: ${o.poNo} | Buyer: ${o.buyerName} | Stage: ${o.currentStage} | Status: ${o.runRate.status.toUpperCase()} (${o.runRate.statusReason})`);
+    const { summary, orders } = ordersData;
+
+    // Verify summary requirements: exactly 1 RED, at least 1 AMBER, at least 1 GREEN
+    if (summary.red !== 1) {
+      throw new Error(`Expected exactly 1 RED order on board, but found ${summary.red}`);
     }
+    if (summary.amber < 1) {
+      throw new Error(`Expected at least 1 AMBER order on board, but found ${summary.amber}`);
+    }
+    if (summary.green < 1) {
+      throw new Error(`Expected at least 1 GREEN order on board, but found ${summary.green}`);
+    }
+    console.log("✅ Board summary assertion PASSED: exactly 1 RED, at least 1 AMBER, at least 1 GREEN.");
+
+    // Print all orders with PO, Buyer, Stage, Done / Target, Status
+    console.log("\n--- Full Order Board Status ---");
+    for (const o of orders) {
+      console.log(
+        `  - PO: ${o.poNo.padEnd(12)} | Buyer: ${o.buyerName.padEnd(10)} | Stage: ${o.currentStage.padEnd(10)} | Done: ${String(o.stageDone).padStart(5)} / ${String(o.stageTargetQty).padEnd(5)} | Status: ${o.runRate.status.toUpperCase().padEnd(6)} (${o.runRate.statusReason})`
+      );
+    }
+
+    // Explicitly verify the 3 core sample orders
+    console.log("\n--- Verifying Core Sample Orders ---");
+    const sample88213 = orders.find((o: any) => o.poNo === "B-PO-88213");
+    const sample88240 = orders.find((o: any) => o.poNo === "B-PO-88240");
+    const sample0488 = orders.find((o: any) => o.poNo === "C-PO-0488");
+
+    if (!sample88213 || !sample88240 || !sample0488) {
+      throw new Error("Missing one or more of the 3 required sample orders!");
+    }
+
+    console.log(`  Sample 1: B-PO-88213 -> Stage: ${sample88213.currentStage}, Done: ${sample88213.stageDone}/${sample88213.totalQty}, Status: ${sample88213.runRate.status.toUpperCase()}`);
+    console.log(`  Sample 2: B-PO-88240 -> Stage: ${sample88240.currentStage}, Done: ${sample88240.stageDone}/${sample88240.totalQty}, Status: ${sample88240.runRate.status.toUpperCase()}`);
+    console.log(`  Sample 3: C-PO-0488  -> Stage: ${sample0488.currentStage}, Done: ${sample0488.stageDone}/${sample0488.totalQty}, Status: ${sample0488.runRate.status.toUpperCase()}`);
+
+    if (sample88213.runRate.status !== "amber" || sample88213.currentStage !== "Stitching" || sample88213.stageDone !== 6800) {
+      throw new Error(`Sample B-PO-88213 mismatch: expected Stitching, 6800 done, AMBER; got ${sample88213.currentStage}, ${sample88213.stageDone}, ${sample88213.runRate.status}`);
+    }
+    if (sample88240.runRate.status !== "red" || sample88240.currentStage !== "Finishing" || sample88240.stageDone !== 5200) {
+      throw new Error(`Sample B-PO-88240 mismatch: expected Finishing, 5200 done, RED; got ${sample88240.currentStage}, ${sample88240.stageDone}, ${sample88240.runRate.status}`);
+    }
+    if (sample0488.runRate.status !== "green" || sample0488.currentStage !== "Printing" || sample0488.stageDone !== 3100) {
+      throw new Error(`Sample C-PO-0488 mismatch: expected Printing, 3100 done, GREEN; got ${sample0488.currentStage}, ${sample0488.stageDone}, ${sample0488.runRate.status}`);
+    }
+    console.log("✅ All 3 core sample orders matched their required stage, quantity, and distinct colours!");
 
     // -------------------------------------------------------------
     // Test 3: POST one daily update as sup1@demo.example & confirm in Neon DB
@@ -192,6 +233,12 @@ async function run() {
     // Check new total daily_updates count
     const allUpdates = await db.select().from(schema.dailyUpdates);
     console.log(`   - Total daily_updates count in Neon Postgres is now: ${allUpdates.length}`);
+
+    // Clean up the inserted verification row so the seed database remains untouched
+    console.log("Cleaning up test verification row from Neon database...");
+    await db.delete(schema.dailyUpdates).where(eq(schema.dailyUpdates.clientUuid, clientUuid));
+    const restoredUpdates = await db.select().from(schema.dailyUpdates);
+    console.log(`✅ Test row removed. Total daily_updates count restored to: ${restoredUpdates.length}`);
 
     // -------------------------------------------------------------
     // Test 4: Confirm Buyer B cannot read a Buyer C order (404)
