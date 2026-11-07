@@ -1,7 +1,7 @@
 import path from "path";
 import fs from "fs";
 
-// Load .env.local if present
+// Load .env.local if present without overwriting existing environment variables
 const envPath = path.resolve(process.cwd(), ".env.local");
 if (fs.existsSync(envPath)) {
   const lines = fs.readFileSync(envPath, "utf-8").split("\n");
@@ -10,7 +10,9 @@ if (fs.existsSync(envPath)) {
     if (match) {
       const key = match[1].trim();
       const value = match[2].trim().replace(/^["']|["']$/g, "");
-      if (!process.env[key]) process.env[key] = value;
+      if (process.env[key] === undefined) {
+        process.env[key] = value;
+      }
     }
   }
 }
@@ -69,32 +71,62 @@ async function run() {
   const aiEnabled = process.env.AI_ENABLED !== "false";
   const provider = (process.env.AI_PROVIDER || (process.env.NVIDIA_API_KEY ? "nvidia" : "anthropic")).toLowerCase();
   const hasKey = provider === "nvidia" ? !!process.env.NVIDIA_API_KEY : !!process.env.ANTHROPIC_API_KEY;
+  const thinking = process.env.AI_THINKING === "true";
+  const timeoutMs = parseInt(process.env.AI_TIMEOUT_MS || "15000", 10) || 15000;
 
   console.log("===============================================================");
   console.log("            TIRUPPUR FLOOR NOTE CLASSIFIER CHECK               ");
   console.log("===============================================================");
-  console.log(`AI_ENABLED  : ${aiEnabled}`);
-  console.log(`AI_PROVIDER : ${provider}`);
-  console.log(`API KEY     : ${hasKey ? "[CONFIGURED - REDACTED]" : "[NOT SET - FALLBACK ACTIVE]"}`);
-  console.log(`AI_MODEL    : ${process.env.AI_MODEL || (provider === "nvidia" ? "meta/llama-3.1-8b-instruct" : "claude-3-haiku-20240307")}`);
+  console.log(`AI_ENABLED   : ${aiEnabled}`);
+  console.log(`AI_PROVIDER  : ${provider}`);
+  console.log(`API KEY      : ${hasKey ? "[CONFIGURED - REDACTED]" : "[NOT SET - FALLBACK ACTIVE]"}`);
+  console.log(`AI_MODEL     : ${process.env.AI_MODEL || (provider === "nvidia" ? "meta/llama-3.1-8b-instruct" : "claude-3-haiku-20240307")}`);
+  console.log(`AI_THINKING  : ${thinking}`);
+  console.log(`AI_TIMEOUT   : ${timeoutMs}ms`);
   console.log("---------------------------------------------------------------\n");
 
+  let aiCount = 0;
+  let fallbackCount = 0;
   let index = 1;
+
   for (const t of testNotes) {
     console.log(`[${index}/10] Test: ${t.type}`);
-    console.log(`Original Note : "${t.note}"`);
+    console.log(`Original Note  : "${t.note}"`);
 
     const result = await classifyNote(t.note);
 
-    console.log(`Translation   : "${result.translation}"`);
-    console.log(`Category      : ${result.category}`);
-    console.log(`Confidence    : ${result.confidence}`);
-    console.log(`Source        : ${result.source.toUpperCase()}`);
+    console.log(`Translation    : "${result.translation}"`);
+    console.log(`Category       : ${result.category}`);
+    console.log(`Confidence     : ${result.confidence}`);
+    console.log(`Source         : ${result.source.toUpperCase()}`);
+
+    if (result.source === "fallback") {
+      fallbackCount++;
+      console.log(`Reason         : ${result.fallbackReason || "unknown"}`);
+      if (result.providerError) {
+        console.log(`Provider Error : ${result.providerError}`);
+      }
+    } else {
+      aiCount++;
+    }
+
+    console.log(`Elapsed        : ${result.elapsedMs ?? 0}ms`);
     console.log("---------------------------------------------------------------");
     index++;
   }
 
-  console.log("\n✅ AI Classifier Check complete: all 10 notes processed safely.");
+  console.log("\n===============================================================");
+  console.log(`Summary: ai_count / fallback_count: ${aiCount} / ${fallbackCount}`);
+  console.log("===============================================================");
+
+  if (aiEnabled && aiCount === 0) {
+    console.error(
+      `\n❌ Error: AI_ENABLED=true but ai_count is 0 (all ${fallbackCount} notes fell back to keyword classifier).`
+    );
+    process.exit(1);
+  } else {
+    console.log("\n✅ AI Classifier Check complete.");
+  }
 }
 
 run().catch((err) => {
