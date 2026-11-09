@@ -4,27 +4,116 @@
 
 @layer base {
   :root {
-    --background: 255 255 255;
-    --surface: 247 247 245;
-    --text-primary: 22 22 22;
-    --text-secondary: 107 107 102;
-    --accent: 43 58 103;
+    --color-bg: #FBFBFA;
+    --color-surface: #FFFFFF;
+    --color-surface-raised: #FFFFFF;
+    --color-surface-hover: #F3F3EF;
+    --color-border: #E5E5DF;
+    --color-border-subtle: #EFEFEA;
+    --color-text: #161719;
+    --color-text-muted: #5C6066;
+    
+    /* One accent colour only: deep classic navy indigo */
+    --color-accent: #24477A;
+    --color-accent-hover: #1B355C;
+    --color-accent-subtle: #EBF1F8;
+    --color-accent-fg: #FFFFFF;
+
+    /* Status colours & soft background tints (Light) */
+    --color-green: #1E7E34;
+    --color-green-tint: #EBF6EE;
+    --color-green-text: #14532D;
+
+    --color-amber: #B45309;
+    --color-amber-tint: #FEF7EA;
+    --color-amber-text: #78350F;
+
+    --color-red: #C53030;
+    --color-red-tint: #FDF2F2;
+    --color-red-text: #7F1D1D;
+
+    --color-grey: #5A626A;
+    --color-grey-tint: #F1F3F5;
+    --color-grey-text: #343A40;
+  }
+
+  .dark {
+    --color-bg: #141517;
+    --color-surface: #1C1D21;
+    --color-surface-raised: #24262B;
+    --color-surface-hover: #2B2D33;
+    --color-border: #2E3036;
+    --color-border-subtle: #24262B;
+    --color-text: #EDEDEA;
+    --color-text-muted: #9BA0A8;
+
+    /* Accent in dark mode */
+    --color-accent: #4A76BD;
+    --color-accent-hover: #5B86D6;
+    --color-accent-subtle: #192333;
+    --color-accent-fg: #FFFFFF;
+
+    /* Status colours & soft background tints (Dark) */
+    --color-green: #22C55E;
+    --color-green-tint: #102619;
+    --color-green-text: #86EFAC;
+
+    --color-amber: #F59E0B;
+    --color-amber-tint: #2B1F0B;
+    --color-amber-text: #FDE68A;
+
+    --color-red: #EF4444;
+    --color-red-tint: #2E1316;
+    --color-red-text: #FCA5A5;
+
+    --color-grey: #9CA3AF;
+    --color-grey-tint: #1F2126;
+    --color-grey-text: #D1D5DB;
   }
 
   body {
-    background-color: #FFFFFF;
-    color: #161616;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans Tamil', sans-serif;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Tamil", "Latha", system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    transition: background-color 150ms ease, color 150ms ease;
+  }
+
+  /* Tamil typography support */
+  [lang="ta"], .font-tamil {
+    font-family: "Noto Sans Tamil", "Latha", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.6;
   }
 
   input, select, textarea, button {
     font-size: 16px; /* Prevents auto-zoom on mobile iOS/Android */
   }
+
+  /* Accessible focus ring */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
 }
 
+/* Tabular figures for run-rates, quantities, and dates */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Touch target for supervisor and mobile views */
 .tap-target {
   min-height: 48px;
   min-width: 48px;
+}
+
+/* Respect user motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
