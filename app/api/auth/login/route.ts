@@ -43,7 +43,7 @@ export async function POST(req: Request) {
       return apiError("UNAUTHORIZED", "Invalid email or password", 401);
     }
 
-    const validPassword = bcrypt.compareSync(password, user.passwordHash);
+    const validPassword = await bcrypt.compare(password, user.passwordHash);
     if (!validPassword) {
       return apiError("UNAUTHORIZED", "Invalid email or password", 401);
     }

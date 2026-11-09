@@ -301,6 +301,38 @@ export async function getOrderLines(orderId: string): Promise<OrderLine[]> {
   return store.getOrderLines(orderId);
 }
 
+export async function getOrderLinesByOrderIds(orderIds: string[]): Promise<Map<string, OrderLine[]>> {
+  const map = new Map<string, OrderLine[]>();
+  if (orderIds.length === 0) return map;
+
+  const db = getDb();
+  if (db) {
+    const rows = await db
+      .select()
+      .from(schema.orderLines)
+      .where(inArray(schema.orderLines.orderId, orderIds));
+
+    for (const l of rows) {
+      const line: OrderLine = {
+        id: l.id,
+        orderId: l.orderId,
+        colour: l.colour,
+        size: l.size,
+        qty: l.qty,
+      };
+      const arr = map.get(l.orderId);
+      if (arr) {
+        arr.push(line);
+      } else {
+        map.set(l.orderId, [line]);
+      }
+    }
+    return map;
+  }
+  assertNotProductionFallback();
+  return store.getOrderLinesByOrderIds(orderIds);
+}
+
 export async function getOrderStages(orderId: string): Promise<OrderStage[]> {
   const db = getDb();
   if (db) {
@@ -324,6 +356,44 @@ export async function getOrderStages(orderId: string): Promise<OrderStage[]> {
   }
   assertNotProductionFallback();
   return store.getOrderStages(orderId);
+}
+
+export async function getOrderStagesByOrderIds(orderIds: string[]): Promise<Map<string, OrderStage[]>> {
+  const map = new Map<string, OrderStage[]>();
+  if (orderIds.length === 0) return map;
+
+  const db = getDb();
+  if (db) {
+    const rows = await db
+      .select()
+      .from(schema.orderStages)
+      .where(inArray(schema.orderStages.orderId, orderIds))
+      .orderBy(asc(schema.orderStages.seq));
+
+    for (const s of rows) {
+      const stage: OrderStage = {
+        id: s.id,
+        orderId: s.orderId,
+        stage: s.stage,
+        seq: s.seq,
+        unitId: s.unitId,
+        targetQty: s.targetQty,
+        plannedStart: s.plannedStart,
+        plannedEnd: s.plannedEnd,
+        currentEnd: s.currentEnd,
+        actualEnd: s.actualEnd || undefined,
+      };
+      const arr = map.get(s.orderId);
+      if (arr) {
+        arr.push(stage);
+      } else {
+        map.set(s.orderId, [stage]);
+      }
+    }
+    return map;
+  }
+  assertNotProductionFallback();
+  return store.getOrderStagesByOrderIds(orderIds);
 }
 
 export async function getOrderStageById(stageId: string): Promise<OrderStage | undefined> {
@@ -563,6 +633,51 @@ export async function getDailyUpdatesForStage(stageId: string): Promise<DailyUpd
   }
   assertNotProductionFallback();
   return store.getDailyUpdatesForStage(stageId);
+}
+
+export async function getDailyUpdatesByStageIds(stageIds: string[]): Promise<Map<string, DailyUpdate[]>> {
+  const map = new Map<string, DailyUpdate[]>();
+  if (stageIds.length === 0) return map;
+
+  const db = getDb();
+  if (db) {
+    const rows = await db
+      .select()
+      .from(schema.dailyUpdates)
+      .where(inArray(schema.dailyUpdates.orderStageId, stageIds));
+
+    for (const u of rows) {
+      const update: DailyUpdate = {
+        id: u.id,
+        clientUuid: u.clientUuid,
+        orderStageId: u.orderStageId,
+        unitId: u.unitId,
+        reportedDate: u.reportedDate,
+        qty: u.qty,
+        noteOriginal: u.noteOriginal || undefined,
+        noteLang: (u.noteLang as DailyUpdate["noteLang"]) || undefined,
+        noteEn: u.noteEn || undefined,
+        reasonCategory: u.reasonCategory || undefined,
+        aiConfidence: u.aiConfidence || undefined,
+        categorySource: (u.categorySource as DailyUpdate["categorySource"]) || undefined,
+        categoryChangedBy: u.categoryChangedBy || undefined,
+        photoId: u.photoId || undefined,
+        submittedBy: u.submittedBy,
+        clientTs: u.clientTs.toISOString(),
+        receivedAt: u.receivedAt.toISOString(),
+        isCorrection: u.isCorrection,
+      };
+      const arr = map.get(u.orderStageId);
+      if (arr) {
+        arr.push(update);
+      } else {
+        map.set(u.orderStageId, [update]);
+      }
+    }
+    return map;
+  }
+  assertNotProductionFallback();
+  return store.getDailyUpdatesByStageIds(stageIds);
 }
 
 export async function getDailyUpdatesForOrder(orderId: string): Promise<DailyUpdate[]> {

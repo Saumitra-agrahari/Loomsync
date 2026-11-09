@@ -107,89 +107,118 @@ export async function GET(req: Request) {
   const filterWeek = url.searchParams.get("week") || "";
   const filterStatus = url.searchParams.get("status") || "";
 
-  const orders = await repo.getOrders();
-  const today = formatDate(new Date());
+  // 1. Fetch orders, buyers, and units concurrently (eliminates N+1 buyer & unit queries)
+  const [orders, buyers, units] = await Promise.all([
+    repo.getOrders(),
+    repo.getBuyers(),
+    repo.getUnits(),
+  ]);
 
-  // Compute status and run rate for each order
-  const orderRows = await Promise.all(
-    orders.map(async (order) => {
-      const buyer = await repo.getBuyerById(order.buyerId);
-      const lines = await repo.getOrderLines(order.id);
-      const stages = await repo.getOrderStages(order.id);
-      const totalQty = lines.reduce((acc, l) => acc + l.qty, 0);
+  if (orders.length === 0) {
+    return apiSuccess({
+      orders: [],
+      summary: { red: 0, amber: 0, green: 0, grey: 0, total: 0 },
+    });
+  }
 
-      // Current stage is earliest stage with remaining quantity (ASSUMPTION A3)
-      let currentStage = stages[0];
-      let totalDoneInStage = 0;
-      let completedStagesQty = 0;
+  const buyerMap = new Map(buyers.map((b) => [b.id, b]));
+  const unitMap = new Map(units.map((u) => [u.id, u]));
+  const orderIds = orders.map((o) => o.id);
 
-      for (let i = 0; i < stages.length; i++) {
-        const stage = stages[i];
-        const updates = await repo.getDailyUpdatesForStage(stage.id);
-        const stageDone = updates.reduce((acc, u) => acc + u.qty, 0);
+  // 2. Batch fetch lines and stages for all orders concurrently (eliminates 2 * N queries)
+  const [linesMap, stagesMap] = await Promise.all([
+    repo.getOrderLinesByOrderIds(orderIds),
+    repo.getOrderStagesByOrderIds(orderIds),
+  ]);
 
-        if (stageDone < stage.targetQty || i === stages.length - 1) {
-          currentStage = stage;
-          totalDoneInStage = stageDone;
-          break;
-        } else {
-          completedStagesQty += stageDone;
-        }
+  // 3. Collect all stage IDs and batch fetch daily updates in 1 single query (eliminates 50+ N+1 stage queries)
+  const allStageIds: string[] = [];
+  stagesMap.forEach((stages) => {
+    for (const s of stages) {
+      allStageIds.push(s.id);
+    }
+  });
+
+  const updatesByStageMap = await repo.getDailyUpdatesByStageIds(allStageIds);
+
+  // 4. In-memory computation of status and run rate for each order (0 database queries inside loop)
+  const orderRows = orders.map((order) => {
+    const buyer = buyerMap.get(order.buyerId);
+    const lines = linesMap.get(order.id) || [];
+    const stages = stagesMap.get(order.id) || [];
+    const totalQty = lines.reduce((acc, l) => acc + l.qty, 0);
+
+    // Current stage is earliest stage with remaining quantity (ASSUMPTION A3)
+    let currentStage = stages[0];
+    let totalDoneInStage = 0;
+    let completedStagesQty = 0;
+
+    for (let i = 0; i < stages.length; i++) {
+      const stage = stages[i];
+      const updates = updatesByStageMap.get(stage.id) || [];
+      const stageDone = updates.reduce((acc, u) => acc + u.qty, 0);
+
+      if (stageDone < stage.targetQty || i === stages.length - 1) {
+        currentStage = stage;
+        totalDoneInStage = stageDone;
+        break;
+      } else {
+        completedStagesQty += stageDone;
       }
+    }
 
-      const stageUpdates = currentStage ? await repo.getDailyUpdatesForStage(currentStage.id) : [];
-      const downstreamStages = stages
-        .filter((s) => s.seq > (currentStage?.seq || 0))
-        .map((s) => ({ stage: s.stage, plannedDurationDays: STAGE_PLANNED_DURATION_DAYS[s.stage] ?? 2 }));
+    const stageUpdates = currentStage ? (updatesByStageMap.get(currentStage.id) || []) : [];
+    const downstreamStages = stages
+      .filter((s) => s.seq > (currentStage?.seq || 0))
+      .map((s) => ({ stage: s.stage, plannedDurationDays: STAGE_PLANNED_DURATION_DAYS[s.stage] ?? 2 }));
 
-      const runRate = calculateRunRate({
-        orderId: order.id,
-        currentStage: currentStage?.stage || "Cutting",
-        stageTargetQty: currentStage?.targetQty || totalQty,
-        totalQtyDoneInStage: totalDoneInStage,
-        exFactoryDate: order.exFactoryDate,
-        today: "2026-11-05", // baseline today
-        downstreamStages,
-        recentUpdates: stageUpdates.map((u) => ({ reportedDate: u.reportedDate, qty: u.qty })),
-      });
+    const runRate = calculateRunRate({
+      orderId: order.id,
+      currentStage: currentStage?.stage || "Cutting",
+      stageTargetQty: currentStage?.targetQty || totalQty,
+      totalQtyDoneInStage: totalDoneInStage,
+      exFactoryDate: order.exFactoryDate,
+      today: "2026-11-05", // baseline today
+      downstreamStages,
+      recentUpdates: stageUpdates.map((u) => ({ reportedDate: u.reportedDate, qty: u.qty })),
+    });
 
-      const unit = currentStage ? await repo.getUnitById(currentStage.unitId) : undefined;
+    const unit = currentStage ? unitMap.get(currentStage.unitId) : undefined;
 
-      // Ship week helper: e.g. "W47 (Nov 16 - 22)"
-      const exDate = new Date(order.exFactoryDate);
-      const weekNum = Math.ceil(((exDate.getTime() - new Date(exDate.getFullYear(), 0, 1).getTime()) / 86400000 + 1) / 7);
-      const shipWeek = `W${weekNum}`;
+    // Ship week helper: e.g. "W47 (Nov 16 - 22)"
+    const exDate = new Date(order.exFactoryDate);
+    const weekNum = Math.ceil(((exDate.getTime() - new Date(exDate.getFullYear(), 0, 1).getTime()) / 86400000 + 1) / 7);
+    const shipWeek = `W${weekNum}`;
 
-      return {
-        id: order.id,
-        poNo: order.poNo,
-        buyerId: order.buyerId,
-        buyerName: buyer?.name || "Unknown",
-        style: order.style,
-        status: order.status,
-        exFactoryDate: order.exFactoryDate,
-        originalExFactoryDate: order.originalExFactoryDate,
-        currentStage: currentStage?.stage || "Cutting",
-        unitId: currentStage?.unitId || "",
-        unitName: unit?.name || "Unit 1",
-        shipWeek,
-        totalQty,
-        stageTargetQty: currentStage?.targetQty || totalQty,
-        stageDone: totalDoneInStage,
-        percentDone: Math.min(100, Math.round((totalDoneInStage / (currentStage?.targetQty || 1)) * 100)),
-        runRate: {
-          requiredRate: runRate.requiredRate,
-          actualRate: runRate.actualRate,
-          ratio: runRate.ratio,
-          status: runRate.status,
-          statusReason: runRate.statusReason,
-          slipDays: runRate.slipDays,
-          projectedFinish: runRate.projectedFinish,
-          shortBy: Math.max(0, Math.round((runRate.requiredRate - runRate.actualRate) * 100) / 100),
-        },
-      };
-    })
-  );
+    return {
+      id: order.id,
+      poNo: order.poNo,
+      buyerId: order.buyerId,
+      buyerName: buyer?.name || "Unknown",
+      style: order.style,
+      status: order.status,
+      exFactoryDate: order.exFactoryDate,
+      originalExFactoryDate: order.originalExFactoryDate,
+      currentStage: currentStage?.stage || "Cutting",
+      unitId: currentStage?.unitId || "",
+      unitName: unit?.name || "Unit 1",
+      shipWeek,
+      totalQty,
+      stageTargetQty: currentStage?.targetQty || totalQty,
+      stageDone: totalDoneInStage,
+      percentDone: Math.min(100, Math.round((totalDoneInStage / (currentStage?.targetQty || 1)) * 100)),
+      runRate: {
+        requiredRate: runRate.requiredRate,
+        actualRate: runRate.actualRate,
+        ratio: runRate.ratio,
+        status: runRate.status,
+        statusReason: runRate.statusReason,
+        slipDays: runRate.slipDays,
+        projectedFinish: runRate.projectedFinish,
+        shortBy: Math.max(0, Math.round((runRate.requiredRate - runRate.actualRate) * 100) / 100),
+      },
+    };
+  });
 
   // Apply filters
   let filtered = orderRows;

@@ -24,8 +24,12 @@ function ensureEnv() {
   }
 }
 
-let _db: ReturnType<typeof drizzle> | null = null;
-let _pool: Pool | null = null;
+// Global and module-level singleton to guarantee the Neon Pool and Drizzle instance
+// are created once and reused across all incoming requests within the serverless container execution context.
+const globalForDb = globalThis as unknown as {
+  _db: ReturnType<typeof drizzle> | undefined;
+  _pool: Pool | undefined;
+};
 
 export function getDb() {
   ensureEnv();
@@ -38,11 +42,23 @@ export function getDb() {
     }
     return null;
   }
-  if (!_db) {
-    _pool = new Pool({ connectionString });
-    _db = drizzle(_pool, { schema });
+
+  if (!globalForDb._db || !globalForDb._pool) {
+    const cleanUrl = connectionString.trim().replace(/^["']|["']$/g, "");
+    const pool = new Pool({
+      connectionString: cleanUrl,
+      max: 10,
+    });
+    globalForDb._pool = pool;
+    globalForDb._db = drizzle(pool, { schema });
   }
-  return _db;
+
+  return globalForDb._db;
+}
+
+export function getPool(): Pool | null {
+  getDb();
+  return globalForDb._pool ?? null;
 }
 
 export type DbClient = NonNullable<ReturnType<typeof getDb>>;

@@ -214,8 +214,35 @@ class DataStore {
     return this.orderLines.filter((l) => l.orderId === orderId);
   }
 
+  public getOrderLinesByOrderIds(orderIds: string[]): Map<string, OrderLine[]> {
+    const map = new Map<string, OrderLine[]>();
+    const orderIdSet = new Set(orderIds);
+    for (const l of this.orderLines) {
+      if (orderIdSet.has(l.orderId)) {
+        const arr = map.get(l.orderId);
+        if (arr) arr.push(l);
+        else map.set(l.orderId, [l]);
+      }
+    }
+    return map;
+  }
+
   public getOrderStages(orderId: string): OrderStage[] {
     return this.orderStages.filter((s) => s.orderId === orderId).sort((a, b) => a.seq - b.seq);
+  }
+
+  public getOrderStagesByOrderIds(orderIds: string[]): Map<string, OrderStage[]> {
+    const map = new Map<string, OrderStage[]>();
+    const orderIdSet = new Set(orderIds);
+    const sorted = [...this.orderStages].sort((a, b) => a.seq - b.seq);
+    for (const s of sorted) {
+      if (orderIdSet.has(s.orderId)) {
+        const arr = map.get(s.orderId);
+        if (arr) arr.push(s);
+        else map.set(s.orderId, [s]);
+      }
+    }
+    return map;
   }
 
   public getOrderStageById(stageId: string): OrderStage | undefined {
@@ -293,6 +320,19 @@ class DataStore {
   // Daily updates (append-only, idempotent via client_uuid)
   public getDailyUpdatesForStage(stageId: string): DailyUpdate[] {
     return this.dailyUpdates.filter((u) => u.orderStageId === stageId);
+  }
+
+  public getDailyUpdatesByStageIds(stageIds: string[]): Map<string, DailyUpdate[]> {
+    const map = new Map<string, DailyUpdate[]>();
+    const stageIdSet = new Set(stageIds);
+    for (const u of this.dailyUpdates) {
+      if (stageIdSet.has(u.orderStageId)) {
+        const arr = map.get(u.orderStageId);
+        if (arr) arr.push(u);
+        else map.set(u.orderStageId, [u]);
+      }
+    }
+    return map;
   }
 
   public getDailyUpdatesForOrder(orderId: string): DailyUpdate[] {
