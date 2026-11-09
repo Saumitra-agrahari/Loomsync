@@ -8,10 +8,12 @@ import { StatusChip } from "@/components/StatusChip";
 import { RunRateCard } from "@/components/RunRateCard";
 import { SkeletonCard } from "@/components/Skeleton";
 import { ErrorBanner } from "@/components/States";
+import { useI18n } from "@/lib/i18n";
 
 export default function OrderDetailPage() {
   const params = useParams();
   const orderId = params.id as string;
+  const { t, translateStage, translateCategory } = useI18n();
 
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -45,14 +47,14 @@ export default function OrderDetailPage() {
     try {
       const res = await fetch(`/api/orders/${orderId}`);
       if (!res.ok) {
-        if (res.status === 404) throw new Error("Order not found");
-        throw new Error("Failed to load order details");
+        if (res.status === 404) throw new Error(t("errors.orderNotFound"));
+        throw new Error(t("errors.networkError"));
       }
       const data = await res.json();
       setOrder(data.order);
       setNewExDate(data.order.exFactoryDate);
     } catch (err: any) {
-      setError(err.message || "Failed to load order");
+      setError(err.message || t("errors.networkError"));
     } finally {
       setLoading(false);
     }
@@ -66,7 +68,7 @@ export default function OrderDetailPage() {
     e.preventDefault();
     setDateError(null);
     if (!dateReason.trim()) {
-      setDateError("A valid reason is required for every date adjustment.");
+      setDateError(t("detail.reasonLabel"));
       return;
     }
 
@@ -84,17 +86,17 @@ export default function OrderDetailPage() {
 
       const data = await res.json();
       if (!res.ok) {
-        setDateError(data.error?.message || "Failed to update date");
+        setDateError(data.error?.message || t("errors.unknownError"));
         setSavingDate(false);
         return;
       }
 
       setShowDateModal(false);
       setDateReason("");
-      showToast("Ex-factory date updated and recorded in compliance history.");
+      showToast(t("detail.toastDateUpdated"));
       fetchOrder();
     } catch {
-      setDateError("Network error while updating date");
+      setDateError(t("errors.networkError"));
     } finally {
       setSavingDate(false);
     }
@@ -110,7 +112,7 @@ export default function OrderDetailPage() {
       });
       if (res.ok) {
         setOverrideUpdateId(null);
-        showToast("Reason category updated (source recorded as human).");
+        showToast(t("detail.toastCategoryUpdated"));
         fetchOrder();
       }
     } catch {
@@ -153,7 +155,7 @@ export default function OrderDetailPage() {
             href="/"
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:underline focus-ring rounded"
           >
-            ← Back to Order Board
+            {t("detail.backToBoard")}
           </Link>
         </div>
 
@@ -166,7 +168,7 @@ export default function OrderDetailPage() {
           </div>
         ) : !order ? (
           <div className="text-center py-16 bg-surface border border-border rounded-lg text-textMuted">
-            Order not found
+            {t("errors.orderNotFound")}
           </div>
         ) : (
           <div className="space-y-6">
@@ -179,7 +181,10 @@ export default function OrderDetailPage() {
                   </h1>
                   <StatusChip status={order.runRate?.status || order.status} />
                   <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-surface-raised border border-border text-textMuted">
-                    Stage: <span className="text-textPrimary font-bold">{order.activeStage || order.runRate?.stage || "—"}</span>
+                    {t("detail.stageBadge")}:{" "}
+                    <span className="text-textPrimary font-bold">
+                      {translateStage(order.activeStage || order.runRate?.stage || "")}
+                    </span>
                   </span>
                 </div>
 
@@ -189,23 +194,23 @@ export default function OrderDetailPage() {
 
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-textMuted">
                   <span>
-                    Buyer:{" "}
+                    {t("detail.buyerLabel")}:{" "}
                     <strong className="text-textPrimary font-semibold">
                       {order.buyerName} ({order.buyerCountry})
                     </strong>
                   </span>
                   <span>•</span>
                   <span>
-                    Colour:{" "}
+                    {t("detail.colourLabel")}:{" "}
                     <strong className="text-textPrimary font-semibold">
                       {uniqueColors || "Standard"}
                     </strong>
                   </span>
                   <span>•</span>
                   <span>
-                    Total Qty:{" "}
+                    {t("detail.totalQtyLabel")}:{" "}
                     <strong className="tabular-nums text-textPrimary font-semibold">
-                      {order.totalQty.toLocaleString()} pcs
+                      {order.totalQty.toLocaleString()} {t("common.pcs")}
                     </strong>
                   </span>
                 </div>
@@ -215,7 +220,7 @@ export default function OrderDetailPage() {
               <div className="flex flex-col sm:items-end justify-between gap-2 border-t md:border-t-0 pt-3 md:pt-0 border-border">
                 <div className="sm:text-right">
                   <div className="text-[11px] font-semibold uppercase tracking-wider text-textMuted">
-                    Ex-Factory Date
+                    {t("detail.exFactoryDateLabel")}
                   </div>
                   <div className="flex items-center sm:justify-end gap-2 mt-0.5">
                     {order.originalExFactoryDate &&
@@ -235,7 +240,7 @@ export default function OrderDetailPage() {
                   onClick={() => setShowDateModal(true)}
                   className="inline-flex items-center justify-center px-3.5 py-2 bg-surface-raised border border-border rounded-lg text-xs font-semibold text-accent hover:bg-surface-hover hover:border-accent/40 transition-colors focus-ring tap-target"
                 >
-                  Adjust Date (Requires Reason)
+                  {t("detail.adjustDateButton")}
                 </button>
               </div>
             </div>
@@ -260,9 +265,9 @@ export default function OrderDetailPage() {
             <div className="bg-surface border border-border rounded-lg p-5 sm:p-6 shadow-subtle space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-base font-bold text-textPrimary">TNA Milestone Schedule</h2>
+                  <h2 className="text-base font-bold text-textPrimary">{t("detail.tnaScheduleTitle")}</h2>
                   <p className="text-xs text-textMuted">
-                    Target timeline vs actual production progress across stages
+                    {t("detail.tnaScheduleSubtitle")}
                   </p>
                 </div>
               </div>
@@ -285,7 +290,7 @@ export default function OrderDetailPage() {
                             {stage.seq}
                           </span>
                           <span className="font-bold text-sm text-textPrimary">
-                            {stage.stage}
+                            {translateStage(stage.stage)}
                           </span>
                           {stage.unitName && (
                             <span className="text-xs text-textMuted">
@@ -294,7 +299,7 @@ export default function OrderDetailPage() {
                           )}
                           {dateMoved && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-status-amber-bg text-status-amber border border-status-amber/20">
-                              Date changed
+                              {t("detail.dateMovedBadge")}
                             </span>
                           )}
                         </div>
@@ -305,7 +310,7 @@ export default function OrderDetailPage() {
                           </span>
                           <span className="text-textMuted">
                             {" "}
-                            / {stage.targetQty.toLocaleString()} pcs
+                            / {stage.targetQty.toLocaleString()} {t("common.pcs")}
                           </span>{" "}
                           <span className="font-semibold text-accent">
                             ({stage.percentDone}%)
@@ -329,18 +334,15 @@ export default function OrderDetailPage() {
 
                       <div className="flex flex-wrap justify-between items-center text-xs text-textMuted gap-2">
                         <span className="tabular-nums">
-                          Planned: {stage.plannedStart} → {stage.plannedEnd}
+                          {t("detail.plannedWindow", { start: stage.plannedStart, end: stage.plannedEnd })}
                         </span>
                         <div className="flex items-center gap-2">
                           <span className="tabular-nums">
-                            Current Target:{" "}
-                            <strong className="text-textPrimary font-semibold">
-                              {stage.currentEnd}
-                            </strong>
+                            {t("detail.currentTarget", { date: stage.currentEnd })}
                           </span>
                           {stage.actualEnd && (
                             <span className="text-[11px] font-semibold text-status-green bg-status-green-bg px-2 py-0.5 rounded border border-status-green/20">
-                              Completed {stage.actualEnd}
+                              {t("detail.completedBadge", { date: stage.actualEnd })}
                             </span>
                           )}
                         </div>
@@ -351,39 +353,39 @@ export default function OrderDetailPage() {
               </div>
             </div>
 
-            {/* Daily Floor Updates Table (Original Tamil Note + Translation + AI Category) */}
+            {/* Daily Floor Updates Table */}
             <div className="bg-surface border border-border rounded-lg p-5 sm:p-6 shadow-subtle space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <h2 className="text-base font-bold text-textPrimary">
-                    Daily Floor Updates & Notes
+                    {t("detail.floorUpdatesTitle")}
                   </h2>
                   <p className="text-xs text-textMuted">
-                    Reverse-chronological production entries from floor supervisors
+                    {t("detail.floorUpdatesSubtitle")}
                   </p>
                 </div>
                 <div className="text-xs text-textMuted">
-                  Total updates: <strong className="text-textPrimary tabular-nums">{allUpdates.length}</strong>
+                  {t("detail.totalUpdates", { count: allUpdates.length })}
                 </div>
               </div>
 
               {allUpdates.length === 0 ? (
                 <div className="py-8 text-center text-xs text-textMuted bg-surface-raised rounded-lg border border-border">
-                  No daily updates reported yet.
+                  {t("detail.noUpdatesYet")}
                 </div>
               ) : (
                 <div className="overflow-x-auto border border-border rounded-lg">
                   <table className="w-full text-left text-xs sm:text-sm divide-y divide-border">
                     <thead className="bg-surface-raised text-textMuted uppercase tracking-wider text-[11px] font-semibold">
                       <tr>
-                        <th className="py-3 px-3">Date</th>
-                        <th className="py-3 px-3">Stage</th>
-                        <th className="py-3 px-3">Qty Done</th>
-                        <th className="py-3 px-3">Supervisor</th>
-                        <th className="py-3 px-3 min-w-[180px]">Original Note (Tamil / English)</th>
-                        <th className="py-3 px-3 min-w-[180px]">English Translation</th>
-                        <th className="py-3 px-3">Category & Source</th>
-                        <th className="py-3 px-3 text-right">Actions</th>
+                        <th className="py-3 px-3">{t("detail.tableDate")}</th>
+                        <th className="py-3 px-3">{t("detail.tableStage")}</th>
+                        <th className="py-3 px-3">{t("detail.tableQtyDone")}</th>
+                        <th className="py-3 px-3">{t("detail.tableSupervisor")}</th>
+                        <th className="py-3 px-3 min-w-[180px]">{t("detail.tableOriginalNote")}</th>
+                        <th className="py-3 px-3 min-w-[180px]">{t("detail.tableTranslation")}</th>
+                        <th className="py-3 px-3">{t("detail.tableCategorySource")}</th>
+                        <th className="py-3 px-3 text-right">{t("detail.tableActions")}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border bg-surface">
@@ -401,13 +403,13 @@ export default function OrderDetailPage() {
                               {u.reportedDate}
                             </td>
                             <td className="py-3 px-3 font-semibold text-textPrimary whitespace-nowrap">
-                              {u.stageName}
+                              {translateStage(u.stageName)}
                             </td>
                             <td className="py-3 px-3 font-bold tabular-nums text-textPrimary whitespace-nowrap">
-                              {u.qty.toLocaleString()} pcs
+                              {u.qty.toLocaleString()} {t("common.pcs")}
                             </td>
                             <td className="py-3 px-3 text-xs text-textMuted whitespace-nowrap">
-                              {u.submittedBy ? `Sup. ${u.submittedBy.slice(-4)}` : "Supervisor"}
+                              {u.submittedBy ? `Sup. ${u.submittedBy.slice(-4)}` : t("roles.supervisor")}
                             </td>
                             <td className="py-3 px-3">
                               {u.noteOriginal ? (
@@ -425,21 +427,21 @@ export default function OrderDetailPage() {
                               {u.reasonCategory ? (
                                 <div className="inline-flex flex-col gap-1 items-start">
                                   <span className="px-2 py-0.5 rounded text-xs font-semibold bg-surface-raised border border-border text-textPrimary">
-                                    {u.reasonCategory.replace(/_/g, " ")}
+                                    {translateCategory(u.reasonCategory)}
                                   </span>
                                   {isAi && (
                                     <span className="text-[10px] font-medium text-accent">
-                                      AI suggested
+                                      {t("categorySources.aiSuggested")}
                                     </span>
                                   )}
                                   {isFallback && (
                                     <span className="text-[10px] font-medium text-status-amber">
-                                      Needs review
+                                      {t("categorySources.needsReview")}
                                     </span>
                                   )}
                                   {isHuman && (
                                     <span className="text-[10px] font-medium text-textMuted">
-                                      Manual override
+                                      {t("categorySources.manualOverride")}
                                     </span>
                                   )}
                                 </div>
@@ -457,7 +459,7 @@ export default function OrderDetailPage() {
                                   }}
                                   className="text-xs font-semibold text-accent hover:underline focus-ring rounded p-1"
                                 >
-                                  Change category
+                                  {t("detail.changeCategory")}
                                 </button>
                               )}
                             </td>
@@ -474,27 +476,27 @@ export default function OrderDetailPage() {
             <div className="bg-surface border border-border rounded-lg p-5 sm:p-6 shadow-subtle space-y-4">
               <div>
                 <h2 className="text-base font-bold text-textPrimary">
-                  Milestone Date Change Audit History
+                  {t("detail.dateHistoryTitle")}
                 </h2>
                 <p className="text-xs text-textMuted">
-                  Immutable append-only record of all schedule adjustments and compliance reasons
+                  {t("detail.dateHistorySubtitle")}
                 </p>
               </div>
 
               {!order.history || order.history.length === 0 ? (
                 <div className="py-6 text-center text-xs text-textMuted bg-surface-raised rounded-lg border border-border">
-                  No date changes recorded. Order is running on original schedule.
+                  {t("detail.noHistoryYet")}
                 </div>
               ) : (
                 <div className="overflow-x-auto border border-border rounded-lg">
                   <table className="w-full text-left text-xs sm:text-sm divide-y divide-border">
                     <thead className="bg-surface-raised text-textMuted uppercase tracking-wider text-[11px] font-semibold">
                       <tr>
-                        <th className="py-3 px-3">Date Changed</th>
-                        <th className="py-3 px-3">Field</th>
-                        <th className="py-3 px-3">Old Date → New Date</th>
-                        <th className="py-3 px-3 min-w-[200px]">Audit Reason</th>
-                        <th className="py-3 px-3 text-right">Changed By</th>
+                        <th className="py-3 px-3">{t("detail.tableChangedAt")}</th>
+                        <th className="py-3 px-3">{t("detail.tableField")}</th>
+                        <th className="py-3 px-3">{t("detail.tableOldNew")}</th>
+                        <th className="py-3 px-3 min-w-[200px]">{t("detail.tableReason")}</th>
+                        <th className="py-3 px-3 text-right">{t("detail.tableChangedBy")}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border bg-surface">
@@ -519,7 +521,7 @@ export default function OrderDetailPage() {
                             {h.reason}
                           </td>
                           <td className="py-3 px-3 text-right text-textMuted whitespace-nowrap">
-                            {h.changedBy || "Merchandiser"}
+                            {h.changedBy || t("roles.merchandiser")}
                           </td>
                         </tr>
                       ))}
@@ -542,10 +544,10 @@ export default function OrderDetailPage() {
             <div className="bg-surface rounded-lg max-w-md w-full p-6 shadow-xl border border-border space-y-4">
               <div>
                 <h3 id="date-modal-title" className="text-lg font-bold text-textPrimary">
-                  Adjust Ex-Factory Date
+                  {t("detail.dateModalTitle")}
                 </h3>
                 <p className="text-xs text-textMuted mt-1">
-                  Every date adjustment is logged permanently in the buyer-visible audit trail and requires a clear reason.
+                  {t("detail.dateModalSubtitle")}
                 </p>
               </div>
 
@@ -557,7 +559,7 @@ export default function OrderDetailPage() {
                     htmlFor="new-ex-date"
                     className="block text-xs font-semibold uppercase tracking-wider text-textMuted mb-1"
                   >
-                    New Ex-Factory Date *
+                    {t("detail.newDateLabel")}
                   </label>
                   <input
                     id="new-ex-date"
@@ -565,7 +567,7 @@ export default function OrderDetailPage() {
                     value={newExDate}
                     onChange={(e) => setNewExDate(e.target.value)}
                     required
-                    className="w-full px-3 py-2 border border-border rounded-lg bg-surface text-textPrimary focus-ring tap-target text-sm"
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-surface text-textPrimary focus-ring tap-target text-sm font-mono"
                   />
                 </div>
 
@@ -574,14 +576,14 @@ export default function OrderDetailPage() {
                     htmlFor="date-reason"
                     className="block text-xs font-semibold uppercase tracking-wider text-textMuted mb-1"
                   >
-                    Reason for Date Change * (Mandatory)
+                    {t("detail.reasonLabel")}
                   </label>
                   <textarea
                     id="date-reason"
                     rows={3}
                     value={dateReason}
                     onChange={(e) => setDateReason(e.target.value)}
-                    placeholder="e.g. Yarn batch dyeing shade mismatch required 2 days of re-processing"
+                    placeholder={t("detail.reasonPlaceholder")}
                     required
                     className="w-full px-3 py-2 border border-border rounded-lg bg-surface text-textPrimary focus-ring text-sm"
                   />
@@ -596,14 +598,14 @@ export default function OrderDetailPage() {
                     }}
                     className="px-4 py-2 border border-border rounded-lg text-xs font-medium text-textPrimary hover:bg-surface-hover focus-ring tap-target"
                   >
-                    Cancel
+                    {t("common.cancel")}
                   </button>
                   <button
                     type="submit"
                     disabled={savingDate}
                     className="px-4 py-2 bg-accent text-white rounded-lg text-xs font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50 focus-ring tap-target"
                   >
-                    {savingDate ? "Saving..." : "Save Date Adjustment"}
+                    {savingDate ? t("detail.savingDateButton") : t("detail.saveDateButton")}
                   </button>
                 </div>
               </form>
@@ -622,10 +624,10 @@ export default function OrderDetailPage() {
             <div className="bg-surface rounded-lg max-w-sm w-full p-5 shadow-xl border border-border space-y-4">
               <div>
                 <h3 id="category-modal-title" className="text-base font-bold text-textPrimary">
-                  Change Reason Category
+                  {t("detail.categoryModalTitle")}
                 </h3>
                 <p className="text-xs text-textMuted mt-1">
-                  Override the category assigned by the AI classifier. Source will be recorded as human.
+                  {t("detail.categoryModalSubtitle")}
                 </p>
               </div>
 
@@ -634,7 +636,7 @@ export default function OrderDetailPage() {
                   htmlFor="override-category-select"
                   className="block text-xs font-semibold text-textMuted uppercase tracking-wider mb-1"
                 >
-                  Category
+                  {t("detail.tableCategorySource")}
                 </label>
                 <select
                   id="override-category-select"
@@ -642,15 +644,15 @@ export default function OrderDetailPage() {
                   onChange={(e) => setNewCategory(e.target.value)}
                   className="w-full px-3 py-2 border border-border rounded-lg bg-surface text-textPrimary text-sm focus-ring tap-target"
                 >
-                  <option value="machine_breakdown">Machine breakdown</option>
-                  <option value="material_shortage">Material shortage</option>
-                  <option value="manpower_shortage">Manpower shortage</option>
-                  <option value="power_cut">Power cut</option>
-                  <option value="quality_rework">Quality/rework</option>
-                  <option value="buyer_approval_pending">Buyer approval pending</option>
-                  <option value="subcontractor_delay">Subcontractor delay</option>
-                  <option value="other">Other</option>
-                  <option value="unclear">Unclear</option>
+                  <option value="machine_breakdown">{t("categories.machine_breakdown")}</option>
+                  <option value="material_shortage">{t("categories.material_shortage")}</option>
+                  <option value="manpower_shortage">{t("categories.manpower_shortage")}</option>
+                  <option value="power_cut">{t("categories.power_cut")}</option>
+                  <option value="quality_rework">{t("categories.quality_rework")}</option>
+                  <option value="buyer_approval_pending">{t("categories.buyer_approval_pending")}</option>
+                  <option value="subcontractor_delay">{t("categories.subcontractor_delay")}</option>
+                  <option value="other">{t("categories.other")}</option>
+                  <option value="unclear">{t("categories.unclear")}</option>
                 </select>
               </div>
 
@@ -660,7 +662,7 @@ export default function OrderDetailPage() {
                   onClick={() => setOverrideUpdateId(null)}
                   className="px-3 py-1.5 border border-border rounded-lg text-xs font-medium text-textPrimary hover:bg-surface-hover focus-ring"
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </button>
                 <button
                   type="button"
@@ -668,7 +670,7 @@ export default function OrderDetailPage() {
                   onClick={() => handleCategoryOverride(overrideUpdateId, newCategory)}
                   className="px-3.5 py-1.5 bg-accent text-white rounded-lg text-xs font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50 focus-ring"
                 >
-                  {savingCategory ? "Saving..." : "Save Override"}
+                  {savingCategory ? t("detail.savingCategoryButton") : t("detail.saveCategoryButton")}
                 </button>
               </div>
             </div>

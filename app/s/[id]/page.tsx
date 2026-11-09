@@ -5,10 +5,12 @@ import { useParams, useRouter } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
 import { queueUpdate, syncOutbox } from "@/lib/offline/db";
 import { ErrorBanner } from "@/components/States";
+import { useI18n } from "@/lib/i18n";
 
 export default function SupervisorUpdatePage() {
   const params = useParams();
   const router = useRouter();
+  const { t, locale, translateStage } = useI18n();
   const stageId = params.id as string;
 
   const [orderStage, setOrderStage] = useState<any>(null);
@@ -193,7 +195,7 @@ export default function SupervisorUpdatePage() {
         >
           <span className="w-2 h-2 rounded-full bg-status-amber animate-pulse" />
           <span>
-            ஆஃப்லைன் பயன்முறை: பதிவு வரிசையில் சேமிக்கப்படும் / Offline mode: update will sync automatically when connected
+            {t("supervisor.offlineBannerDisconnectedText")}
           </span>
         </aside>
       )}
@@ -205,10 +207,10 @@ export default function SupervisorUpdatePage() {
             onClick={() => router.push("/s")}
             className="text-xs font-semibold text-accent hover:underline mb-2 flex items-center gap-1.5 focus-ring rounded tap-target"
           >
-            ← பின்செல் / Back to List
+            {t("supervisor.backToList")}
           </button>
           <h1 className="text-xl sm:text-2xl font-extrabold text-textPrimary tracking-tight">
-            தினசரி உற்பத்தி பதிவு / Daily Update
+            {t("supervisor.formTitle")}
           </h1>
         </div>
 
@@ -223,10 +225,10 @@ export default function SupervisorUpdatePage() {
           >
             <div className="text-2xl">✓</div>
             <p className="font-bold text-status-green text-sm sm:text-base">
-              பதிவு செய்யப்பட்டது. நன்றி!
+              {t("supervisor.successBannerTitle")}
             </p>
             <p className="text-xs text-textMuted">
-              Saved. Thank you. Returning to supervisor list...
+              {t("supervisor.successBannerSubtitle")}
             </p>
           </div>
         )}
@@ -246,7 +248,7 @@ export default function SupervisorUpdatePage() {
                 </div>
                 <div className="text-right">
                   <span className="inline-block bg-accent text-white px-2.5 py-1 rounded-md text-xs font-bold font-mono">
-                    {orderStage.stage}
+                    {translateStage(orderStage.stage)}
                   </span>
                 </div>
               </div>
@@ -254,16 +256,10 @@ export default function SupervisorUpdatePage() {
               {/* Calm Context: Total completed so far vs target */}
               <div className="pt-2 border-t border-border flex justify-between items-center text-xs text-textMuted">
                 <span>
-                  முடிந்தது / Made so far:{" "}
-                  <strong className="font-mono tabular-nums text-textPrimary font-bold">
-                    {orderStage.stageDone.toLocaleString()} pcs
-                  </strong>
+                  {t("supervisor.headerMadeSoFar", { qty: orderStage.stageDone.toLocaleString() })}
                 </span>
                 <span>
-                  இலக்கு / Target:{" "}
-                  <strong className="font-mono tabular-nums text-textPrimary font-bold">
-                    {orderStage.targetQty.toLocaleString()} pcs
-                  </strong>
+                  {t("supervisor.headerTarget", { qty: orderStage.targetQty.toLocaleString() })}
                 </span>
               </div>
             </div>
@@ -274,7 +270,7 @@ export default function SupervisorUpdatePage() {
                 htmlFor="daily-qty-input"
                 className="block text-xs font-extrabold uppercase tracking-wider text-textMuted mb-1.5"
               >
-                இன்று உற்பத்தியான எண்ணிக்கை / Quantity Made Today *
+                {t("supervisor.qtyInputLabel")}
               </label>
               <div className="relative">
                 <input
@@ -290,14 +286,14 @@ export default function SupervisorUpdatePage() {
                 />
               </div>
               <p className="text-[11px] text-textMuted text-center mt-1">
-                மீதமுள்ள அளவு / Remaining: {orderStage.remaining.toLocaleString()} pcs
+                {t("supervisor.remainingHint", { qty: orderStage.remaining.toLocaleString() })}
               </p>
             </div>
 
             {/* 2. Photo Upload / Camera with thumbnail & clear remove button */}
             <div>
               <label className="block text-xs font-extrabold uppercase tracking-wider text-textMuted mb-1.5">
-                புகைப்படம் / Floor Photo (Optional)
+                {t("supervisor.photoLabel")}
               </label>
               {photoPreview ? (
                 <div className="p-3 bg-surface-raised rounded-xl border border-border space-y-2">
@@ -310,14 +306,14 @@ export default function SupervisorUpdatePage() {
                   </div>
                   <div className="flex items-center justify-between text-xs pt-1">
                     <span className="text-status-green font-semibold flex items-center gap-1">
-                      ✓ படம் இணைக்கப்பட்டது / Photo attached (&le;300 KB)
+                      ✓ {t("supervisor.photoAttached")}
                     </span>
                     <button
                       type="button"
                       onClick={handleRemovePhoto}
                       className="px-2.5 py-1 text-xs font-semibold text-status-red hover:bg-status-red-bg border border-status-red/30 rounded-md focus-ring tap-target"
                     >
-                      நீக்கு / Remove
+                      {t("supervisor.removePhoto")}
                     </button>
                   </div>
                 </div>
@@ -346,10 +342,10 @@ export default function SupervisorUpdatePage() {
                     </svg>
                   </div>
                   <span className="text-sm font-bold text-accent">
-                    படம் எடுக்கவும் / Camera or Upload
+                    {t("supervisor.cameraButtonLabel")}
                   </span>
                   <span className="text-[11px] text-textMuted mt-0.5">
-                    தானாகவே சுருக்கப்படும் / Compressed &le;300 KB
+                    {t("supervisor.compressedHint")}
                   </span>
                   <input
                     type="file"
@@ -369,7 +365,7 @@ export default function SupervisorUpdatePage() {
                   htmlFor="floor-note-text"
                   className="text-xs font-extrabold uppercase tracking-wider text-textMuted"
                 >
-                  குறிப்பு / Floor Note (Tamil / English)
+                  {t("supervisor.noteLabel")}
                 </label>
                 {speechSupported && (
                   <button
@@ -382,7 +378,7 @@ export default function SupervisorUpdatePage() {
                     }`}
                   >
                     <span>🎤</span>
-                    <span>{isListening ? "கேட்கிறது... / Listening" : "தமிழில் பேசு / Mic"}</span>
+                    <span>{isListening ? t("supervisor.micButtonListening") : t("supervisor.micButtonDefault")}</span>
                   </button>
                 )}
               </div>
@@ -391,12 +387,12 @@ export default function SupervisorUpdatePage() {
                 rows={2}
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="எ.கா: தையல் இயந்திரம் பழுது / Machine breakdown, yarn delay..."
-                className="w-full px-3.5 py-2.5 border-2 border-border focus:border-accent rounded-xl text-sm text-textPrimary bg-surface font-tamil focus-ring"
+                placeholder={locale === "ta" ? "எ.கா: தையல் இயந்திரம் பழுது..." : "e.g. Machine breakdown, yarn delay..."}
+                className="w-full px-3.5 py-2.5 border-2 border-border focus:border-accent rounded-xl text-sm text-textPrimary bg-surface font-tamil leading-relaxed focus-ring"
               />
               {isListening && (
                 <p className="text-xs text-status-red font-medium mt-1 animate-pulse">
-                  ● குரலை கேட்கிறது... பேசி முடிக்கவும் / Listening... Speak now.
+                  ● {t("supervisor.listeningHint")}
                 </p>
               )}
             </div>
@@ -416,10 +412,10 @@ export default function SupervisorUpdatePage() {
                 ⚠️
               </div>
               <h3 id="excess-title" className="text-base font-bold text-textPrimary">
-                எண்ணிக்கை எச்சரிக்கை / Excess Quantity
+                {t("supervisor.excessTitle")}
               </h3>
               <p className="text-xs text-textMuted leading-relaxed">
-                உள்ளிட்ட எண்ணிக்கை ({qty} pcs) மீதமுள்ள அளவை ({orderStage?.remaining} pcs) விட அதிகமாக உள்ளது. தொடர விரும்புகிறீர்களா?
+                {t("supervisor.excessMessage", { qty, remaining: orderStage?.remaining })}
               </p>
               <div className="flex gap-2.5 pt-2">
                 <button
@@ -427,7 +423,7 @@ export default function SupervisorUpdatePage() {
                   onClick={() => setShowExcessConfirm(false)}
                   className="flex-1 py-2.5 border border-border rounded-lg text-xs font-semibold text-textPrimary hover:bg-surface-hover focus-ring tap-target"
                 >
-                  சரிபார் / Edit
+                  {t("supervisor.excessEditButton")}
                 </button>
                 <button
                   type="button"
@@ -437,7 +433,7 @@ export default function SupervisorUpdatePage() {
                   }}
                   className="flex-1 py-2.5 bg-accent text-white rounded-lg text-xs font-bold hover:bg-accent-hover transition-colors focus-ring tap-target"
                 >
-                  தொடரவும் / Yes, Proceed
+                  {t("supervisor.excessProceedButton")}
                 </button>
               </div>
             </div>
@@ -456,10 +452,10 @@ export default function SupervisorUpdatePage() {
               >
                 <span>
                   {submitting
-                    ? "அனுப்பப்படுகிறது... / Submitting..."
+                    ? t("supervisor.submittingButton")
                     : !isOnline
-                    ? "வரிசையில் சேர் / Queue Offline"
-                    : "அனுப்பு / Send Daily Update"}
+                    ? t("supervisor.sendButtonOffline")
+                    : t("supervisor.sendButtonDefault")}
                 </span>
                 <span>→</span>
               </button>

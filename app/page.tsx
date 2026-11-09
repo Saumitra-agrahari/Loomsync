@@ -7,19 +7,15 @@ import { Navbar } from "@/components/Navbar";
 import { StatusChip } from "@/components/StatusChip";
 import { SkeletonRow } from "@/components/Skeleton";
 import { EmptyState, ErrorBanner } from "@/components/States";
+import { useI18n } from "@/lib/i18n";
 import { getTimeOfDayGreeting } from "@/lib/ui/greeting";
 
 function OrderBoardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t, locale, translateStage } = useI18n();
 
   const [user, setUser] = useState<any>(null);
-  const [locale, setLocale] = useState<"en" | "ta">("en");
-
-  useEffect(() => {
-    const match = document.cookie.match(/locale=(en|ta)/);
-    if (match) setLocale(match[1] as "en" | "ta");
-  }, []);
   const [orders, setOrders] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>({ red: 0, amber: 0, green: 0, grey: 0, total: 0 });
   const [buyers, setBuyers] = useState<any[]>([]);
@@ -41,7 +37,6 @@ function OrderBoardContent() {
     setLoading(true);
     setError(null);
     try {
-      // 1. Check current user
       const meRes = await fetch("/api/me");
       if (!meRes.ok) {
         router.push("/login");
@@ -59,7 +54,6 @@ function OrderBoardContent() {
         return;
       }
 
-      // 2. Fetch filters & orders
       const queryParams = new URLSearchParams();
       if (selectedBuyer) queryParams.set("buyer", selectedBuyer);
       if (selectedUnit) queryParams.set("unit", selectedUnit);
@@ -73,7 +67,7 @@ function OrderBoardContent() {
       ]);
 
       if (!ordersRes.ok) {
-        throw new Error("Failed to load production orders");
+        throw new Error(t("errors.networkError"));
       }
 
       const ordersData = await ordersRes.json();
@@ -85,7 +79,7 @@ function OrderBoardContent() {
       setBuyers(buyersData.buyers || []);
       setUnits(unitsData.units || []);
     } catch (err: any) {
-      setError(err.message || "Could not load order board. Please check your network connection.");
+      setError(err.message || t("errors.networkError"));
     } finally {
       setLoading(false);
     }
@@ -109,83 +103,87 @@ function OrderBoardContent() {
     router.push("/");
   };
 
-  // Distinct ship weeks from orders
   const availableWeeks = Array.from(new Set(orders.map((o) => o.shipWeek))).sort();
 
   return (
-    <div className="min-h-screen bg-background flex flex-col transition-colors">
+    <div className="min-h-screen bg-background flex flex-col transition-colors text-textPrimary">
       <Navbar currentUser={user} />
 
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-6 sm:py-8">
         {/* Top Header */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-textPrimary">
-              Production Order Board / உற்பத்தி பலகை
+            {greeting && (
+              <p className="text-xs font-semibold text-accent mb-0.5 animate-in fade-in">
+                {greeting}
+              </p>
+            )}
+            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-textPrimary">
+              {t("board.title")}
             </h1>
-            <p className="text-xs sm:text-sm text-textSecondary mt-0.5">
-              Live run-rate delay warnings and milestone tracking for Tiruppur knitwear lines
+            <p className="text-xs sm:text-sm text-textMuted mt-0.5">
+              {t("board.subtitle")}
             </p>
           </div>
           <Link
             href="/orders/new"
-            className="px-4 py-2 bg-accent hover:bg-accent-hover text-accent-fg rounded-md text-xs sm:text-sm font-semibold transition-colors shadow-subtle tap-target inline-flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-accent"
+            className="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-xs sm:text-sm font-semibold transition-colors shadow-subtle tap-target inline-flex items-center gap-1.5 focus-ring"
           >
             <span>+</span>
-            <span>New Order Setup / புதிய ஆர்டர்</span>
+            <span>{t("nav.newOrder")}</span>
           </Link>
         </div>
 
-        {/* Quiet Summary Strip (PRD §4.3 & UIUX.md) */}
-        <div className="bg-surface-raised border border-border rounded-lg p-3 sm:p-4 mb-5 shadow-subtle flex flex-wrap items-center justify-between gap-3">
+        {/* Quiet Summary Strip */}
+        <div className="bg-surface border border-border rounded-lg p-3 sm:p-4 mb-5 shadow-subtle flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 text-xs sm:text-sm">
-            <span className="text-textSecondary text-xs font-semibold uppercase tracking-wider mr-1">
-              Status Mix:
+            <span className="text-textMuted text-xs font-semibold uppercase tracking-wider mr-1">
+              {t("common.status")}:
             </span>
 
             {/* Red Chip Filter */}
             <button
               type="button"
               onClick={() => updateFilter("status", selectedStatus === "red" ? "" : "red")}
-              className={`px-3 py-1 rounded-full text-xs font-bold border transition-all flex items-center gap-1.5 tabular-nums focus-visible:ring-2 focus-visible:ring-status-red ${
+              className={`px-3 py-1 rounded-full text-xs font-bold border transition-all flex items-center gap-1.5 tabular-nums focus-ring ${
                 selectedStatus === "red"
                   ? "bg-status-red text-white border-status-red ring-2 ring-status-red/40"
-                  : "bg-status-redLight text-status-redText border-status-red/30 hover:border-status-red"
+                  : "bg-status-red-bg text-status-red border-status-red/30 hover:border-status-red"
               }`}
-              title="Filter by Red (Critical Delay)"
+              title={t("board.summaryRed", { count: summary.red })}
             >
               <span className="w-2 h-2 rounded-full bg-status-red shrink-0" />
-              <span>{summary.red} Critical Red</span>
+              <span>{t("board.summaryRed", { count: summary.red })}</span>
             </button>
 
             {/* Amber Chip Filter */}
             <button
               type="button"
               onClick={() => updateFilter("status", selectedStatus === "amber" ? "" : "amber")}
-              className={`px-3 py-1 rounded-full text-xs font-bold border transition-all flex items-center gap-1.5 tabular-nums focus-visible:ring-2 focus-visible:ring-status-amber ${
+              className={`px-3 py-1 rounded-full text-xs font-bold border transition-all flex items-center gap-1.5 tabular-nums focus-ring ${
                 selectedStatus === "amber"
                   ? "bg-status-amber text-white border-status-amber ring-2 ring-status-amber/40"
-                  : "bg-status-amberLight text-status-amberText border-status-amber/30 hover:border-status-amber"
+                  : "bg-status-amber-bg text-status-amber border-status-amber/30 hover:border-status-amber"
               }`}
-              title="Filter by Amber (Trailing)"
+              title={t("board.summaryAmber", { count: summary.amber })}
             >
               <span className="w-2 h-2 rounded-full bg-status-amber shrink-0" />
-              <span>{summary.amber} Trailing Amber</span>
+              <span>{t("board.summaryAmber", { count: summary.amber })}</span>
             </button>
 
             {/* Green Chip Filter */}
             <button
               type="button"
               onClick={() => updateFilter("status", selectedStatus === "green" ? "" : "green")}
-              className={`px-3 py-1 rounded-full text-xs font-bold border transition-all flex items-center gap-1.5 tabular-nums focus-visible:ring-2 focus-visible:ring-status-green ${
+              className={`px-3 py-1 rounded-full text-xs font-bold border transition-all flex items-center gap-1.5 tabular-nums focus-ring ${
                 selectedStatus === "green"
                   ? "bg-status-green text-white border-status-green ring-2 ring-status-green/40"
-                  : "bg-status-greenLight text-status-greenText border-status-green/30 hover:border-status-green"
+                  : "bg-status-green-bg text-status-green border-status-green/30 hover:border-status-green"
               }`}
-              title="Filter by Green (On Track)"
+              title={t("board.summaryGreen", { count: summary.green })}
             >
               <span className="w-2 h-2 rounded-full bg-status-green shrink-0" />
-              <span>{summary.green} On Track Green</span>
+              <span>{t("board.summaryGreen", { count: summary.green })}</span>
             </button>
 
             {/* Grey Chip Filter */}
@@ -193,23 +191,27 @@ function OrderBoardContent() {
               <button
                 type="button"
                 onClick={() => updateFilter("status", selectedStatus === "grey" ? "" : "grey")}
-                className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all flex items-center gap-1.5 tabular-nums focus-visible:ring-2 focus-visible:ring-status-grey ${
+                className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all flex items-center gap-1.5 tabular-nums focus-ring ${
                   selectedStatus === "grey"
                     ? "bg-status-grey text-white border-status-grey ring-2 ring-status-grey/40"
-                    : "bg-status-greyLight text-status-greyText border-status-grey/30 hover:border-status-grey"
+                    : "bg-surface-raised text-textMuted border-border hover:border-textMuted"
                 }`}
-                title="Filter by Grey (No recent data)"
+                title={t("board.summaryGrey", { count: summary.grey })}
               >
-                <span>{summary.grey} Grey</span>
+                <span>{t("board.summaryGrey", { count: summary.grey })}</span>
               </button>
             )}
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-textSecondary font-medium">
+          <div className="flex items-center gap-2 text-xs text-textMuted font-medium">
             <span>
-              Total: <strong className="text-textPrimary tabular-nums">{summary.total}</strong> orders
+              <strong className="text-textPrimary tabular-nums">
+                {t("board.totalOrders", { count: summary.total })}
+              </strong>
             </span>
-            <span className="text-[11px] text-textSecondary hidden sm:inline">(sorted worst-first)</span>
+            <span className="text-[11px] text-textMuted hidden sm:inline">
+              {t("board.sortedWorstFirst")}
+            </span>
           </div>
         </div>
 
@@ -222,33 +224,33 @@ function OrderBoardContent() {
             aria-expanded={mobileFiltersOpen}
           >
             <div className="flex items-center gap-2">
-              <svg className="w-4 h-4 text-textSecondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-4 h-4 text-textMuted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
               </svg>
-              <span>Filters / வடிகட்டிகள்</span>
+              <span>{t("board.filtersLabel")}</span>
               {activeFilterCount > 0 && (
-                <span className="w-5 h-5 rounded-full bg-accent text-accent-fg text-[11px] font-bold flex items-center justify-center">
+                <span className="w-5 h-5 rounded-full bg-accent text-white text-[11px] font-bold flex items-center justify-center">
                   {activeFilterCount}
                 </span>
               )}
             </div>
-            <span>{mobileFiltersOpen ? "▲ Hide" : "▼ Show"}</span>
+            <span>{mobileFiltersOpen ? t("board.filterToggleHide") : t("board.filterToggleShow")}</span>
           </button>
         </div>
 
         {/* Filters Bar (Desktop visible, mobile collapsible) */}
         <div className={`${mobileFiltersOpen ? "block" : "hidden sm:grid"} grid-cols-2 sm:grid-cols-4 gap-3 mb-6 p-3 sm:p-0 bg-surface sm:bg-transparent rounded-lg border sm:border-0 border-border text-xs sm:text-sm`}>
           <div>
-            <label className="block text-[11px] font-semibold text-textSecondary uppercase tracking-wider mb-1">
-              Buyer / பையர்
+            <label className="block text-[11px] font-semibold text-textMuted uppercase tracking-wider mb-1">
+              {t("board.filterBuyer")}
             </label>
             <select
               value={selectedBuyer}
               onChange={(e) => updateFilter("buyer", e.target.value)}
-              className="w-full px-3 py-2 border border-border rounded-md bg-surface-raised text-textPrimary focus:border-accent tap-target"
-              aria-label="Filter by buyer"
+              className="w-full px-3 py-2 border border-border rounded-lg bg-surface text-textPrimary focus-ring tap-target"
+              aria-label={t("board.filterBuyer")}
             >
-              <option value="">All Buyers</option>
+              <option value="">{t("board.allBuyers")}</option>
               {buyers.map((b) => (
                 <option key={b.id} value={b.id}>
                   {b.name}
@@ -258,16 +260,16 @@ function OrderBoardContent() {
           </div>
 
           <div>
-            <label className="block text-[11px] font-semibold text-textSecondary uppercase tracking-wider mb-1">
-              Unit / பிரிவு
+            <label className="block text-[11px] font-semibold text-textMuted uppercase tracking-wider mb-1">
+              {t("board.filterUnit")}
             </label>
             <select
               value={selectedUnit}
               onChange={(e) => updateFilter("unit", e.target.value)}
-              className="w-full px-3 py-2 border border-border rounded-md bg-surface-raised text-textPrimary focus:border-accent tap-target"
-              aria-label="Filter by unit"
+              className="w-full px-3 py-2 border border-border rounded-lg bg-surface text-textPrimary focus-ring tap-target"
+              aria-label={t("board.filterUnit")}
             >
-              <option value="">All Units</option>
+              <option value="">{t("board.allUnits")}</option>
               {units.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.name}
@@ -277,16 +279,16 @@ function OrderBoardContent() {
           </div>
 
           <div>
-            <label className="block text-[11px] font-semibold text-textSecondary uppercase tracking-wider mb-1">
-              Ship Week / ஏற்றுமதி வாரம்
+            <label className="block text-[11px] font-semibold text-textMuted uppercase tracking-wider mb-1">
+              {t("board.filterWeek")}
             </label>
             <select
               value={selectedWeek}
               onChange={(e) => updateFilter("week", e.target.value)}
-              className="w-full px-3 py-2 border border-border rounded-md bg-surface-raised text-textPrimary focus:border-accent tap-target"
-              aria-label="Filter by ship week"
+              className="w-full px-3 py-2 border border-border rounded-lg bg-surface text-textPrimary focus-ring tap-target"
+              aria-label={t("board.filterWeek")}
             >
-              <option value="">All Weeks</option>
+              <option value="">{t("board.allWeeks")}</option>
               {availableWeeks.map((w) => (
                 <option key={w} value={w}>
                   {w}
@@ -296,20 +298,20 @@ function OrderBoardContent() {
           </div>
 
           <div>
-            <label className="block text-[11px] font-semibold text-textSecondary uppercase tracking-wider mb-1">
-              Status / நிலை
+            <label className="block text-[11px] font-semibold text-textMuted uppercase tracking-wider mb-1">
+              {t("board.filterStatus")}
             </label>
             <select
               value={selectedStatus}
               onChange={(e) => updateFilter("status", e.target.value)}
-              className="w-full px-3 py-2 border border-border rounded-md bg-surface-raised text-textPrimary focus:border-accent tap-target"
-              aria-label="Filter by status"
+              className="w-full px-3 py-2 border border-border rounded-lg bg-surface text-textPrimary focus-ring tap-target"
+              aria-label={t("board.filterStatus")}
             >
-              <option value="">All Statuses</option>
-              <option value="red">Red (Critical Delay)</option>
-              <option value="amber">Amber (Trailing)</option>
-              <option value="green">Green (On Track)</option>
-              <option value="grey">Grey (No Recent Data)</option>
+              <option value="">{t("board.allStatuses")}</option>
+              <option value="red">{t("status.criticalDelay")}</option>
+              <option value="amber">{t("status.trailing")}</option>
+              <option value="green">{t("status.onTrack")}</option>
+              <option value="grey">{t("status.noRecentData")}</option>
             </select>
           </div>
 
@@ -318,9 +320,9 @@ function OrderBoardContent() {
               <button
                 type="button"
                 onClick={clearAllFilters}
-                className="text-xs font-semibold text-accent hover:underline flex items-center gap-1"
+                className="text-xs font-semibold text-accent hover:underline flex items-center gap-1 focus-ring rounded p-1"
               >
-                ✕ Clear all filters / வடிகட்டிகளை அகற்று
+                ✕ {t("board.clearAllFilters")}
               </button>
             </div>
           )}
@@ -335,29 +337,29 @@ function OrderBoardContent() {
           <EmptyState
             message={
               selectedStatus === "red"
-                ? "No critical delay orders at this time. All active orders are progressing."
+                ? t("board.emptyRed")
                 : selectedStatus === "amber"
-                ? "No trailing orders at this time. Production run-rates are on target."
+                ? t("board.emptyAmber")
                 : summary.total === 0
-                ? "No orders need attention today. All 11 orders are on track."
-                : "No orders match the selected filters. Clear filters to view all orders."
+                ? t("board.emptyAllOnTrack")
+                : t("board.emptyFiltered")
             }
-            actionText={activeFilterCount > 0 ? (locale === "ta" ? "வடிகட்டிகளை அகற்று" : "Clear All Filters") : undefined}
+            actionText={activeFilterCount > 0 ? t("board.clearAllFilters") : undefined}
             onAction={activeFilterCount > 0 ? clearAllFilters : undefined}
           />
         ) : (
           <div className="space-y-3">
             {/* Desktop Table View */}
-            <div className="hidden md:block overflow-hidden border border-border rounded-lg bg-surface-raised shadow-subtle">
+            <div className="hidden md:block overflow-hidden border border-border rounded-lg bg-surface shadow-subtle">
               <table className="w-full text-left text-xs sm:text-sm">
-                <thead className="bg-surface border-b border-border text-textSecondary uppercase tracking-wider text-[11px]">
+                <thead className="bg-surface-raised border-b border-border text-textMuted uppercase tracking-wider text-[11px]">
                   <tr>
-                    <th className="py-3 px-4 font-semibold">PO & Style</th>
-                    <th className="py-3 px-4 font-semibold">Buyer</th>
-                    <th className="py-3 px-4 font-semibold">Stage Progress</th>
-                    <th className="py-3 px-4 font-semibold">Run-Rate Maths</th>
-                    <th className="py-3 px-4 font-semibold">Ex-Factory</th>
-                    <th className="py-3 px-4 font-semibold text-right">Status</th>
+                    <th className="py-3 px-4 font-semibold">{t("board.tablePoAndStyle")}</th>
+                    <th className="py-3 px-4 font-semibold">{t("board.tableBuyer")}</th>
+                    <th className="py-3 px-4 font-semibold">{t("board.tableStageProgress")}</th>
+                    <th className="py-3 px-4 font-semibold">{t("board.tableRunRateMaths")}</th>
+                    <th className="py-3 px-4 font-semibold">{t("board.tableExFactory")}</th>
+                    <th className="py-3 px-4 font-semibold text-right">{t("board.tableStatus")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -381,18 +383,18 @@ function OrderBoardContent() {
                         }`}
                       >
                         <td className="py-3.5 px-4">
-                          <span className="font-bold text-accent hover:underline">{o.poNo}</span>
-                          <div className="text-xs text-textSecondary truncate max-w-xs">{o.style}</div>
+                          <span className="font-bold text-accent hover:underline font-mono">{o.poNo}</span>
+                          <div className="text-xs text-textMuted truncate max-w-xs">{o.style}</div>
                         </td>
                         <td className="py-3.5 px-4 font-medium text-textPrimary">{o.buyerName}</td>
                         <td className="py-3.5 px-4">
                           <div className="flex items-center justify-between text-xs mb-1 font-medium">
-                            <span className="text-textPrimary">{o.currentStage}</span>
-                            <span className="text-textSecondary tabular-nums">
+                            <span className="text-textPrimary">{translateStage(o.currentStage)}</span>
+                            <span className="text-textMuted tabular-nums">
                               {o.stageDone.toLocaleString()} / {o.stageTargetQty.toLocaleString()} ({o.percentDone}%)
                             </span>
                           </div>
-                          <div className="w-36 bg-surface border border-border/80 rounded-full h-1.5 overflow-hidden">
+                          <div className="w-36 bg-surface-raised border border-border/80 rounded-full h-1.5 overflow-hidden">
                             <div
                               className={`h-full transition-all ${
                                 isRed
@@ -407,29 +409,20 @@ function OrderBoardContent() {
                         </td>
                         <td className="py-3.5 px-4">
                           <div className="font-medium text-textPrimary tabular-nums">
-                            Need <span className="font-bold">{Math.round(o.runRate.requiredRate)}</span>/day · Making{" "}
-                            <span
-                              className={
-                                isRed
-                                  ? "text-status-red font-bold"
-                                  : isAmber
-                                  ? "text-status-amber font-semibold"
-                                  : "text-status-green font-semibold"
-                              }
-                            >
-                              {Math.round(o.runRate.actualRate)}
-                            </span>
-                            /day
+                            {t("runrate.needVsMaking", {
+                              need: Math.round(o.runRate.requiredRate || o.runRate.required_rate),
+                              making: Math.round(o.runRate.actualRate || o.runRate.actual_rate),
+                            })}
                           </div>
                           {o.runRate.shortBy > 0 && (
                             <div className="text-xs text-status-red font-medium tabular-nums">
-                              Short by {Math.round(o.runRate.shortBy)}/day ({o.runRate.slipDays}d slip)
+                              {t("runrate.shortBy", { short: Math.round(o.runRate.shortBy) })} ({o.runRate.slipDays}d {t("runrate.slipSuffix")})
                             </div>
                           )}
                         </td>
                         <td className="py-3.5 px-4">
-                          <span className="font-medium text-textPrimary tabular-nums">{o.exFactoryDate}</span>
-                          <div className="text-xs text-textSecondary">{o.shipWeek}</div>
+                          <span className="font-medium text-textPrimary tabular-nums font-mono">{o.exFactoryDate}</span>
+                          <div className="text-xs text-textMuted">{o.shipWeek}</div>
                         </td>
                         <td className="py-3.5 px-4 text-right">
                           <StatusChip status={o.runRate.status} />
@@ -452,7 +445,7 @@ function OrderBoardContent() {
                   <div
                     key={o.id}
                     onClick={() => router.push(`/orders/${o.id}`)}
-                    className={`bg-surface-raised border border-border rounded-lg p-3.5 shadow-subtle active:bg-surface-hover transition-colors cursor-pointer ${
+                    className={`bg-surface border rounded-lg p-4 shadow-subtle hover:border-accent cursor-pointer transition-all active:scale-[0.99] ${
                       isRed
                         ? "border-l-4 border-l-status-red"
                         : isAmber
@@ -462,39 +455,30 @@ function OrderBoardContent() {
                         : "border-l-4 border-l-status-grey/40"
                     }`}
                   >
-                    <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="flex items-start justify-between gap-2 mb-2 pb-2 border-b border-border">
                       <div>
-                        <span className="font-bold text-accent text-base">{o.poNo}</span>
-                        <p className="text-xs text-textSecondary">{o.style}</p>
+                        <span className="font-bold font-mono text-accent text-base">{o.poNo}</span>
+                        <div className="text-xs text-textMuted truncate max-w-[200px]">{o.style}</div>
                       </div>
                       <StatusChip status={o.runRate.status} size="sm" />
                     </div>
 
-                    <div className="my-2.5 p-2.5 bg-surface rounded-md border border-border text-xs tabular-nums">
-                      <p className="font-semibold text-textPrimary">
-                        Need {Math.round(o.runRate.requiredRate)}/day · Making {Math.round(o.runRate.actualRate)}/day
-                      </p>
-                      {o.runRate.shortBy > 0 && (
-                        <p className="text-status-red font-medium mt-0.5">
-                          Short by {Math.round(o.runRate.shortBy)}/day ({o.runRate.slipDays}d slip)
-                        </p>
-                      )}
-                    </div>
-
                     <div className="space-y-1.5 text-xs">
                       <div className="flex justify-between">
-                        <span className="text-textSecondary">Buyer:</span>
+                        <span className="text-textMuted">{t("board.cardBuyer")}:</span>
                         <span className="font-medium text-textPrimary">{o.buyerName}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-textSecondary">Stage ({o.currentStage}):</span>
+                        <span className="text-textMuted">
+                          {t("board.cardStage")} ({translateStage(o.currentStage)}):
+                        </span>
                         <span className="font-medium text-textPrimary tabular-nums">
                           {o.stageDone.toLocaleString()} / {o.stageTargetQty.toLocaleString()} ({o.percentDone}%)
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-textSecondary">Ex-Factory:</span>
-                        <span className="font-medium text-textPrimary tabular-nums">
+                        <span className="text-textMuted">{t("board.cardExFactory")}:</span>
+                        <span className="font-medium text-textPrimary tabular-nums font-mono">
                           {o.exFactoryDate} ({o.shipWeek})
                         </span>
                       </div>

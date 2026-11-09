@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useI18n } from "@/lib/i18n";
 
 type ThemeMode = "system" | "light" | "dark";
 
 export function ThemeToggle() {
+  const { t } = useI18n();
   const [theme, setTheme] = useState<ThemeMode>("system");
   const [mounted, setMounted] = useState(false);
 
@@ -57,20 +59,15 @@ export function ThemeToggle() {
     return (
       <button
         type="button"
-        className="w-9 h-9 rounded-md border border-border bg-surface text-textSecondary flex items-center justify-center text-xs"
-        aria-label="Theme mode"
+        className="w-9 h-9 rounded-lg border border-border bg-surface text-textMuted flex items-center justify-center text-xs"
+        aria-label={t("nav.toggleTheme")}
       >
         <span className="w-4 h-4" />
       </button>
     );
   }
 
-  const label =
-    theme === "light"
-      ? "Theme: Light (click for Dark)"
-      : theme === "dark"
-      ? "Theme: Dark (click for System)"
-      : "Theme: System (click for Light)";
+  const label = t("nav.toggleTheme");
 
   return (
     <button
@@ -78,7 +75,7 @@ export function ThemeToggle() {
       onClick={cycleTheme}
       aria-label={label}
       title={label}
-      className="w-9 h-9 rounded-md border border-border bg-surface hover:bg-surface-hover text-textPrimary hover:text-accent transition-colors flex items-center justify-center focus-visible:ring-2 focus-visible:ring-accent"
+      className="w-9 h-9 rounded-lg border border-border bg-surface hover:bg-surface-hover text-textPrimary hover:text-accent transition-colors flex items-center justify-center focus-ring"
     >
       {theme === "light" ? (
         // Sun icon

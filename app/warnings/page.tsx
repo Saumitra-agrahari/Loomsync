@@ -6,8 +6,11 @@ import { Navbar } from "@/components/Navbar";
 import { StatusChip } from "@/components/StatusChip";
 import { SkeletonRow } from "@/components/Skeleton";
 import { EmptyState, ErrorBanner } from "@/components/States";
+import { useI18n } from "@/lib/i18n";
 
 export default function WarningInboxPage() {
+  const { t, translateStage, translateCategory } = useI18n();
+
   const [warnings, setWarnings] = useState<any[]>([]);
   const [tab, setTab] = useState<"draft" | "confirmed" | "dismissed">("draft");
   const [loading, setLoading] = useState(true);
@@ -34,11 +37,11 @@ export default function WarningInboxPage() {
     setError(null);
     try {
       const res = await fetch(`/api/warnings?status=${tab}`);
-      if (!res.ok) throw new Error("Failed to load warnings");
+      if (!res.ok) throw new Error(t("errors.networkError"));
       const data = await res.json();
       setWarnings(data.warnings || []);
     } catch (err: any) {
-      setError(err.message || "Failed to load warnings");
+      setError(err.message || t("errors.networkError"));
     } finally {
       setLoading(false);
     }
@@ -53,14 +56,14 @@ export default function WarningInboxPage() {
     try {
       const res = await fetch(`/api/warnings/${id}/confirm`, { method: "POST" });
       if (res.ok) {
-        showToast(`Delay warning for ${poNo} confirmed and notified to buyer.`);
+        showToast(t("warnings.toastConfirmed", { poNo }));
         fetchWarnings();
       } else {
         const data = await res.json();
-        showToast(data.error?.message || "Failed to confirm warning.");
+        showToast(data.error?.message || t("errors.unknownError"));
       }
     } catch {
-      showToast("Network error while confirming warning.");
+      showToast(t("errors.networkError"));
     } finally {
       setActionLoading(null);
     }
@@ -69,7 +72,7 @@ export default function WarningInboxPage() {
   const handleDismiss = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!dismissReason.trim()) {
-      setDismissError("Dismissal reason is required");
+      setDismissError(t("warnings.dismissReasonLabel"));
       return;
     }
     if (!dismissingId) return;
@@ -82,18 +85,17 @@ export default function WarningInboxPage() {
         body: JSON.stringify({ reason: dismissReason }),
       });
       if (res.ok) {
-        const id = dismissingId;
         setDismissingId(null);
         setDismissReason("");
         setDismissError(null);
-        showToast("Delay warning dismissed.");
+        showToast(t("warnings.toastDismissed"));
         fetchWarnings();
       } else {
         const data = await res.json();
-        setDismissError(data.error?.message || "Failed to dismiss warning");
+        setDismissError(data.error?.message || t("errors.unknownError"));
       }
     } catch {
-      setDismissError("Failed to dismiss warning");
+      setDismissError(t("errors.networkError"));
     } finally {
       setActionLoading(null);
     }
@@ -105,11 +107,11 @@ export default function WarningInboxPage() {
 
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-textPrimary tracking-tight">
-            Delay Warning Review Inbox
+          <h1 className="text-xl sm:text-2xl font-extrabold text-textPrimary tracking-tight">
+            {t("warnings.title")}
           </h1>
           <p className="text-xs sm:text-sm text-textMuted mt-1">
-            Review algorithmic run-rate warnings before they reach buyers. Only confirmed warnings appear in buyer portals.
+            {t("warnings.subtitle")}
           </p>
         </div>
 
@@ -124,7 +126,7 @@ export default function WarningInboxPage() {
                 : "border-transparent text-textMuted hover:text-textPrimary"
             }`}
           >
-            Pending Review (Drafts)
+            {t("warnings.tabDrafts")}
           </button>
           <button
             type="button"
@@ -135,7 +137,7 @@ export default function WarningInboxPage() {
                 : "border-transparent text-textMuted hover:text-textPrimary"
             }`}
           >
-            Confirmed (Visible to Buyer)
+            {t("warnings.tabConfirmed")}
           </button>
           <button
             type="button"
@@ -146,7 +148,7 @@ export default function WarningInboxPage() {
                 : "border-transparent text-textMuted hover:text-textPrimary"
             }`}
           >
-            Dismissed
+            {t("warnings.tabDismissed")}
           </button>
         </div>
 
@@ -155,7 +157,15 @@ export default function WarningInboxPage() {
         {loading ? (
           <SkeletonRow count={3} />
         ) : warnings.length === 0 ? (
-          <EmptyState message={`No ${tab} warnings at this time.`} />
+          <EmptyState
+            message={
+              tab === "draft"
+                ? t("warnings.noDraftsEmpty")
+                : tab === "confirmed"
+                ? t("warnings.noConfirmedEmpty")
+                : t("warnings.noDismissedEmpty")
+            }
+          />
         ) : (
           <div className="space-y-4">
             {warnings.map((w) => (
@@ -175,18 +185,18 @@ export default function WarningInboxPage() {
                       <StatusChip status={w.status} />
                     </div>
                     <p className="text-xs text-textMuted">
-                      {w.style} • Buyer:{" "}
-                      <strong className="text-textPrimary font-semibold">{w.buyerName}</strong> • Stage:{" "}
-                      <strong className="text-textPrimary font-semibold">{w.stage}</strong>
+                      {w.style} • {t("detail.buyerLabel")}:{" "}
+                      <strong className="text-textPrimary font-semibold">{w.buyerName}</strong> • {t("detail.stageBadge")}:{" "}
+                      <strong className="text-textPrimary font-semibold">{translateStage(w.stage)}</strong>
                     </p>
                   </div>
 
                   <div className="text-right">
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-textMuted">
-                      Projected Delay
+                      {t("warnings.projectedDelay")}
                     </span>
                     <div className="text-base sm:text-lg font-bold font-mono tabular-nums text-status-red">
-                      +{w.slipDays} working days
+                      {t("warnings.delayDays", { days: w.slipDays })}
                     </div>
                   </div>
                 </div>
@@ -194,32 +204,22 @@ export default function WarningInboxPage() {
                 {/* Maths Snapshot */}
                 <div className="p-3.5 bg-surface-raised rounded-lg border border-border text-xs sm:text-sm font-medium">
                   <div className="font-bold text-textPrimary mb-1 text-xs uppercase tracking-wider">
-                    The Maths Breakdown
+                    {t("warnings.mathsTitle")}
                   </div>
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-textMuted">
                     <span>
-                      Target Rate:{" "}
-                      <strong className="text-accent underline tabular-nums font-bold">
-                        {Math.round(w.requiredRate)}/day
-                      </strong>
+                      {t("warnings.targetRate", { rate: Math.round(w.requiredRate) })}
                     </span>
                     <span>•</span>
                     <span>
-                      Actual Rate:{" "}
-                      <strong className="text-status-red underline tabular-nums font-bold">
-                        {Math.round(w.actualRate)}/day
-                      </strong>
+                      {t("warnings.actualRate", { rate: Math.round(w.actualRate) })}
                     </span>
                     <span>•</span>
                     <span>
-                      Remaining:{" "}
-                      <strong className="text-textPrimary tabular-nums font-semibold">
-                        {w.remaining.toLocaleString()} pcs
-                      </strong>{" "}
-                      in{" "}
-                      <strong className="text-textPrimary tabular-nums font-semibold">
-                        {w.daysAvailable} days
-                      </strong>
+                      {t("warnings.remainingQtyInDays", {
+                        qty: w.remaining.toLocaleString(),
+                        days: w.daysAvailable,
+                      })}
                     </span>
                   </div>
                 </div>
@@ -229,19 +229,21 @@ export default function WarningInboxPage() {
                   <div className="p-3.5 bg-status-amber-bg border border-status-amber/25 rounded-lg text-xs space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-status-amber">
-                        Floor Supervisor Note
+                        {t("warnings.supervisorNoteTitle")}
                       </span>
                       {w.latestNote.category && (
                         <span className="bg-surface px-2 py-0.5 rounded text-[11px] font-semibold text-textPrimary border border-border">
-                          AI: {w.latestNote.category.replace(/_/g, " ")}{" "}
-                          {w.latestNote.confidence && `(${(w.latestNote.confidence * 100).toFixed(0)}%)`}
+                          {t("warnings.aiConfidence", {
+                            category: translateCategory(w.latestNote.category),
+                            conf: w.latestNote.confidence ? (w.latestNote.confidence * 100).toFixed(0) : "100",
+                          })}
                         </span>
                       )}
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                       <div>
                         <span className="text-[11px] font-semibold text-textMuted block mb-0.5">
-                          Original (Tamil):
+                          {t("warnings.originalTamil")}:
                         </span>
                         <p className="font-tamil text-textPrimary leading-relaxed">
                           {w.latestNote.original}
@@ -249,7 +251,7 @@ export default function WarningInboxPage() {
                       </div>
                       <div>
                         <span className="text-[11px] font-semibold text-textMuted block mb-0.5">
-                          English Translation:
+                          {t("warnings.translationEnglish")}:
                         </span>
                         <p className="text-textPrimary leading-relaxed">
                           {w.latestNote.translation || "—"}
@@ -272,7 +274,7 @@ export default function WarningInboxPage() {
                       }}
                       className="px-4 py-2 border border-border rounded-lg text-xs font-semibold text-textPrimary hover:bg-surface-hover transition-colors focus-ring tap-target"
                     >
-                      Dismiss (Requires Reason)
+                      {t("warnings.dismissButton")}
                     </button>
                     <button
                       type="button"
@@ -280,7 +282,7 @@ export default function WarningInboxPage() {
                       onClick={() => handleConfirm(w.id, w.poNo)}
                       className="px-4.5 py-2 bg-accent text-white rounded-lg text-xs font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50 focus-ring tap-target shadow-xs"
                     >
-                      {actionLoading === w.id ? "Sending..." : "Confirm & Notify Buyer"}
+                      {actionLoading === w.id ? t("warnings.confirmingButton") : t("warnings.confirmButton")}
                     </button>
                   </div>
                 )}
@@ -288,8 +290,7 @@ export default function WarningInboxPage() {
                 {/* Dismiss reason display if dismissed */}
                 {tab === "dismissed" && w.dismissReason && (
                   <div className="p-3 bg-surface-raised rounded-md border border-border text-xs text-textMuted">
-                    <span className="font-semibold text-textPrimary">Dismissal Reason: </span>
-                    <span>&ldquo;{w.dismissReason}&rdquo;</span>
+                    <span>{t("warnings.dismissedReasonPrefix", { reason: w.dismissReason })}</span>
                   </div>
                 )}
               </div>
@@ -308,10 +309,10 @@ export default function WarningInboxPage() {
             <div className="bg-surface rounded-lg max-w-md w-full p-6 shadow-xl border border-border space-y-4">
               <div>
                 <h3 id="dismiss-modal-title" className="text-lg font-bold text-textPrimary">
-                  Dismiss Delay Warning
+                  {t("warnings.dismissModalTitle")}
                 </h3>
                 <p className="text-xs text-textMuted mt-1">
-                  Explain why this delay warning is being dismissed without alerting the buyer. This will be preserved in the audit log.
+                  {t("warnings.dismissModalSubtitle")}
                 </p>
               </div>
 
@@ -323,7 +324,7 @@ export default function WarningInboxPage() {
                     htmlFor="dismiss-reason-text"
                     className="block text-xs font-semibold uppercase tracking-wider text-textMuted mb-1"
                   >
-                    Dismissal Reason * (Mandatory)
+                    {t("warnings.dismissReasonLabel")}
                   </label>
                   <textarea
                     id="dismiss-reason-text"
@@ -331,7 +332,7 @@ export default function WarningInboxPage() {
                     value={dismissReason}
                     onChange={(e) => setDismissReason(e.target.value)}
                     required
-                    placeholder="e.g. Added a second shift to recover 80 pcs/day deficit; yarn arriving tonight"
+                    placeholder={t("warnings.dismissReasonPlaceholder")}
                     className="w-full px-3 py-2 border border-border rounded-lg bg-surface text-textPrimary text-sm focus-ring"
                   />
                 </div>
@@ -346,14 +347,14 @@ export default function WarningInboxPage() {
                     }}
                     className="px-4 py-2 border border-border rounded-lg text-xs font-medium text-textPrimary hover:bg-surface-hover focus-ring tap-target"
                   >
-                    Cancel
+                    {t("common.cancel")}
                   </button>
                   <button
                     type="submit"
                     disabled={actionLoading === dismissingId}
                     className="px-4 py-2 bg-surface-raised border border-border text-textPrimary hover:bg-surface-hover rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 focus-ring tap-target"
                   >
-                    {actionLoading === dismissingId ? "Dismissing..." : "Confirm Dismissal"}
+                    {actionLoading === dismissingId ? t("warnings.dismissingButton") : t("warnings.confirmDismissButton")}
                   </button>
                 </div>
               </form>

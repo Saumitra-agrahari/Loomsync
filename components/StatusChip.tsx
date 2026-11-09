@@ -1,4 +1,7 @@
+"use client";
+
 import React from "react";
+import { useI18n } from "@/lib/i18n";
 
 export type StatusType = "green" | "amber" | "red" | "grey" | "draft" | "confirmed" | "dismissed";
 
@@ -9,8 +12,10 @@ interface StatusChipProps {
 }
 
 export function StatusChip({ status, label, size = "md" }: StatusChipProps) {
+  const { t, translateStatus } = useI18n();
+
   let bg = "bg-status-greyLight text-status-greyText border-status-grey/30";
-  let defaultText = "No Recent Data";
+  let defaultText = t("status.grey");
   let iconSvg = (
     // Clock / Inactive shape for grey
     <svg className="w-3.5 h-3.5 mr-1.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -21,7 +26,7 @@ export function StatusChip({ status, label, size = "md" }: StatusChipProps) {
   switch (status) {
     case "green":
       bg = "bg-status-greenLight text-status-greenText border-status-green/30";
-      defaultText = "On Track";
+      defaultText = t("status.green");
       iconSvg = (
         // Circle Checkmark shape for green
         <svg className="w-3.5 h-3.5 mr-1.5 shrink-0 text-status-green" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -32,7 +37,7 @@ export function StatusChip({ status, label, size = "md" }: StatusChipProps) {
 
     case "amber":
       bg = "bg-status-amberLight text-status-amberText border-status-amber/30";
-      defaultText = "Trailing";
+      defaultText = t("status.amber");
       iconSvg = (
         // Triangle shape for amber
         <svg className="w-3.5 h-3.5 mr-1.5 shrink-0 text-status-amber" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -43,7 +48,7 @@ export function StatusChip({ status, label, size = "md" }: StatusChipProps) {
 
     case "red":
       bg = "bg-status-redLight text-status-redText border-status-red/30";
-      defaultText = "Critical Delay";
+      defaultText = t("status.red");
       iconSvg = (
         // Octagon / Stop shape for red
         <svg className="w-3.5 h-3.5 mr-1.5 shrink-0 text-status-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -54,7 +59,7 @@ export function StatusChip({ status, label, size = "md" }: StatusChipProps) {
 
     case "draft":
       bg = "bg-accent-subtle text-accent border-accent/30";
-      defaultText = "Draft Warning";
+      defaultText = t("status.draft");
       iconSvg = (
         // Diamond / Review shape for draft
         <svg className="w-3.5 h-3.5 mr-1.5 shrink-0 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -65,7 +70,7 @@ export function StatusChip({ status, label, size = "md" }: StatusChipProps) {
 
     case "confirmed":
       bg = "bg-status-redLight text-status-redText border-status-red/30";
-      defaultText = "Confirmed Notice";
+      defaultText = t("status.confirmed");
       iconSvg = (
         // Warning triangle for confirmed warning
         <svg className="w-3.5 h-3.5 mr-1.5 shrink-0 text-status-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -76,7 +81,7 @@ export function StatusChip({ status, label, size = "md" }: StatusChipProps) {
 
     case "dismissed":
       bg = "bg-status-greyLight text-status-greyText border-status-grey/30";
-      defaultText = "Dismissed";
+      defaultText = t("status.dismissed");
       iconSvg = (
         // Cross shape for dismissed
         <svg className="w-3.5 h-3.5 mr-1.5 shrink-0 text-status-grey" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -87,6 +92,7 @@ export function StatusChip({ status, label, size = "md" }: StatusChipProps) {
   }
 
   const padding = size === "sm" ? "px-2 py-0.5 text-xs" : "px-2.5 py-1 text-xs sm:text-sm";
+  const displayLabel = label ? translateStatus(label) : defaultText;
 
   return (
     <span
@@ -94,7 +100,7 @@ export function StatusChip({ status, label, size = "md" }: StatusChipProps) {
       role="status"
     >
       {iconSvg}
-      <span>{label || defaultText}</span>
+      <span>{displayLabel}</span>
     </span>
   );
 }

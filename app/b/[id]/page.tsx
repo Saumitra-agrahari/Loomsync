@@ -6,6 +6,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
 import { SkeletonCard } from "@/components/Skeleton";
 import { ErrorBanner } from "@/components/States";
+import { useI18n } from "@/lib/i18n";
 
 function BuyerOrderDetailContent() {
   const params = useParams();
@@ -13,6 +14,7 @@ function BuyerOrderDetailContent() {
   const searchParams = useSearchParams();
   const orderId = params.id as string;
   const token = searchParams.get("token") || "";
+  const { t, translateStage } = useI18n();
 
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -60,7 +62,7 @@ function BuyerOrderDetailContent() {
             href={`/b${token ? `?token=${encodeURIComponent(token)}` : ""}`}
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:underline focus-ring rounded"
           >
-            ← Back to Your Orders
+            {t("buyer.backToOrders")}
           </Link>
         </div>
 
@@ -70,7 +72,7 @@ function BuyerOrderDetailContent() {
           <SkeletonCard />
         ) : !order ? (
           <div className="text-center py-16 bg-surface border border-border rounded-xl text-textMuted">
-            Order not found or access denied.
+            {t("buyer.emptyAll")}
           </div>
         ) : (
           <div className="space-y-6">
@@ -84,12 +86,12 @@ function BuyerOrderDetailContent() {
                   {order.confirmedWarnings && order.confirmedWarnings.length > 0 ? (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-status-red-bg text-status-red border border-status-red/25">
                       <span className="w-2 h-2 rounded-full bg-status-red" />
-                      Delay Notice
+                      {t("buyer.statusDelayNotice")}
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-status-green-bg text-status-green border border-status-green/25">
                       <span className="font-bold">✓</span>
-                      On Track
+                      {t("buyer.statusOnTrack")}
                     </span>
                   )}
                 </div>
@@ -100,23 +102,23 @@ function BuyerOrderDetailContent() {
 
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-textMuted">
                   <span>
-                    Buyer:{" "}
+                    {t("detail.buyerLabel")}:{" "}
                     <strong className="text-textPrimary font-semibold">
                       {order.buyerName} ({order.buyerCountry})
                     </strong>
                   </span>
                   <span>•</span>
                   <span>
-                    Colour:{" "}
+                    {t("detail.colourLabel")}:{" "}
                     <strong className="text-textPrimary font-semibold">
                       {uniqueColors || "Standard"}
                     </strong>
                   </span>
                   <span>•</span>
                   <span>
-                    Total Order:{" "}
+                    {t("detail.totalQtyLabel")}:{" "}
                     <strong className="tabular-nums font-mono text-textPrimary font-semibold">
-                      {order.totalQty.toLocaleString()} pcs
+                      {order.totalQty.toLocaleString()} {t("common.pcs")}
                     </strong>
                   </span>
                 </div>
@@ -124,7 +126,7 @@ function BuyerOrderDetailContent() {
 
               <div className="md:text-right border-t md:border-t-0 pt-3 md:pt-0 border-border">
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-textMuted block">
-                  Target Ex-Factory Date
+                  {t("detail.exFactoryDateLabel")}
                 </span>
                 <span className="text-lg sm:text-xl font-bold font-mono tabular-nums text-textPrimary">
                   {order.exFactoryDate}
@@ -138,31 +140,21 @@ function BuyerOrderDetailContent() {
                 <div className="flex items-center gap-2">
                   <span className="text-status-red font-bold">⚠️</span>
                   <h2 className="text-sm sm:text-base font-bold text-status-red tracking-tight">
-                    Official Factory Schedule Adjustment Notice
+                    {t("buyer.delayNoticeTitle")}
                   </h2>
                 </div>
                 {order.confirmedWarnings.map((w: any) => (
                   <div key={w.id} className="text-xs sm:text-sm text-textPrimary space-y-2">
                     <p className="leading-relaxed">
-                      The factory management has confirmed a projected schedule adjustment of{" "}
-                      <strong className="text-status-red font-bold font-mono">
-                        +{w.slipDays} working days
-                      </strong>{" "}
-                      against the planned ex-factory milestone.
+                      {t("buyer.delayNoticeBody", { days: w.slipDays })}
                     </p>
                     <div className="p-3 bg-surface/70 rounded-lg border border-border/60 text-xs text-textMuted flex flex-wrap items-center gap-x-4 gap-y-1 font-mono">
                       <span>
-                        Target daily pace:{" "}
-                        <strong className="text-textPrimary tabular-nums">
-                          {Math.round(w.requiredRate)} pcs/day
-                        </strong>
+                        {t("buyer.targetPace", { rate: Math.round(w.requiredRate) })}
                       </span>
                       <span>•</span>
                       <span>
-                        Current 7-day average:{" "}
-                        <strong className="text-status-red tabular-nums">
-                          {Math.round(w.actualRate)} pcs/day
-                        </strong>
+                        {t("buyer.currentAverage", { rate: Math.round(w.actualRate) })}
                       </span>
                     </div>
                   </div>
@@ -174,10 +166,10 @@ function BuyerOrderDetailContent() {
             <div className="bg-surface border border-border rounded-xl p-5 sm:p-6 shadow-subtle space-y-4">
               <div>
                 <h2 className="text-base font-bold text-textPrimary">
-                  Production Milestone Schedule
+                  {t("buyer.milestonesTitle")}
                 </h2>
                 <p className="text-xs text-textMuted">
-                  Live verification of each manufacturing phase towards completion
+                  {t("buyer.milestonesSubtitle")}
                 </p>
               </div>
 
@@ -193,7 +185,7 @@ function BuyerOrderDetailContent() {
                           {m.seq}
                         </span>
                         <strong className="text-sm font-bold text-textPrimary">
-                          {m.stage}
+                          {translateStage(m.stage)}
                         </strong>
                       </div>
 
@@ -203,7 +195,7 @@ function BuyerOrderDetailContent() {
                         </span>
                         <span className="text-textMuted">
                           {" "}
-                          / {m.targetQty.toLocaleString()} pcs
+                          / {m.targetQty.toLocaleString()} {t("common.pcs")}
                         </span>{" "}
                         <span className="font-semibold text-accent">
                           ({m.percentDone}%)
@@ -227,18 +219,15 @@ function BuyerOrderDetailContent() {
 
                     <div className="flex flex-wrap justify-between items-center text-xs text-textMuted gap-2 pt-0.5">
                       <span className="tabular-nums">
-                        Planned Window: {m.plannedStart} → {m.plannedEnd}
+                        {t("buyer.plannedWindow", { start: m.plannedStart, end: m.plannedEnd })}
                       </span>
                       <div className="flex items-center gap-2">
                         <span className="tabular-nums">
-                          Target Completion:{" "}
-                          <strong className="text-textPrimary font-semibold">
-                            {m.currentEnd}
-                          </strong>
+                          {t("buyer.targetCompletion", { date: m.currentEnd })}
                         </span>
                         {m.actualEnd && (
                           <span className="text-[11px] font-semibold text-status-green bg-status-green-bg px-2 py-0.5 rounded border border-status-green/20">
-                            Completed {m.actualEnd}
+                            {t("buyer.completedBadge", { date: m.actualEnd })}
                           </span>
                         )}
                       </div>
@@ -253,10 +242,10 @@ function BuyerOrderDetailContent() {
               <div className="bg-surface border border-border rounded-xl p-5 sm:p-6 shadow-subtle space-y-4">
                 <div>
                   <h2 className="text-base font-bold text-textPrimary">
-                    Verified Production Photos
+                    {t("buyer.photosTitle")}
                   </h2>
                   <p className="text-xs text-textMuted">
-                    Factory floor photographs approved for buyer inspection
+                    {t("buyer.photosSubtitle")}
                   </p>
                 </div>
 
@@ -278,7 +267,7 @@ function BuyerOrderDetailContent() {
                       </div>
                       <div className="pt-2 px-1 text-center">
                         <span className="text-[11px] font-mono tabular-nums text-textMuted block">
-                          Captured {p.takenAt ? p.takenAt.split("T")[0] : "—"}
+                          {t("buyer.capturedLabel", { date: p.takenAt ? p.takenAt.split("T")[0] : "—" })}
                         </span>
                       </div>
                     </div>
@@ -291,25 +280,25 @@ function BuyerOrderDetailContent() {
             <div className="bg-surface border border-border rounded-xl p-5 sm:p-6 shadow-subtle space-y-4">
               <div>
                 <h2 className="text-base font-bold text-textPrimary">
-                  Schedule Revision History
+                  {t("buyer.historyTitle")}
                 </h2>
                 <p className="text-xs text-textMuted">
-                  Transparent record of all milestone date adjustments and formal reasons
+                  {t("buyer.historySubtitle")}
                 </p>
               </div>
 
               {!order.history || order.history.length === 0 ? (
                 <div className="py-6 text-center text-xs text-textMuted bg-surface-raised rounded-lg border border-border">
-                  No revisions recorded. Order is currently tracking to its original contract schedule.
+                  {t("buyer.noHistory")}
                 </div>
               ) : (
                 <div className="overflow-x-auto border border-border rounded-lg">
                   <table className="w-full text-left text-xs sm:text-sm divide-y divide-border">
                     <thead className="bg-surface-raised text-textMuted uppercase tracking-wider text-[11px] font-semibold">
                       <tr>
-                        <th className="py-3 px-3">Revision Date</th>
-                        <th className="py-3 px-3">Milestone Date Adjustment</th>
-                        <th className="py-3 px-3 min-w-[200px]">Reason Provided</th>
+                        <th className="py-3 px-3">{t("buyer.tableRevisionDate")}</th>
+                        <th className="py-3 px-3">{t("buyer.tableAdjustment")}</th>
+                        <th className="py-3 px-3 min-w-[200px]">{t("buyer.tableReasonProvided")}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border bg-surface">

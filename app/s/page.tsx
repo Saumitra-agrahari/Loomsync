@@ -8,9 +8,11 @@ import { SkeletonCard } from "@/components/Skeleton";
 import { EmptyState, ErrorBanner } from "@/components/States";
 import { getQueuedUpdates, syncOutbox } from "@/lib/offline/db";
 import { getTimeOfDayGreeting } from "@/lib/ui/greeting";
+import { useI18n } from "@/lib/i18n";
 
 export default function SupervisorHomePage() {
   const router = useRouter();
+  const { t, locale, translateStage } = useI18n();
   const [user, setUser] = useState<any>(null);
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,7 +21,7 @@ export default function SupervisorHomePage() {
   const [queuedCount, setQueuedCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
-  const greeting = getTimeOfDayGreeting(user?.name, "ta");
+  const greeting = getTimeOfDayGreeting(user?.name, locale);
 
   const fetchSupervisorOrders = async () => {
     setLoading(true);
@@ -96,12 +98,14 @@ export default function SupervisorHomePage() {
               <span className="w-2.5 h-2.5 rounded-full bg-status-amber animate-pulse shrink-0" />
               <div>
                 <p className="font-semibold text-textPrimary">
-                  {!isOnline ? "ஆஃப்லைன் பயன்முறை / Offline Mode" : "ஒத்திசைவு நிலுவை / Sync Pending"}
+                  {!isOnline
+                    ? t("supervisor.offlineBannerTitle")
+                    : t("supervisor.offlineBannerSyncPending")}
                 </p>
                 <p className="text-textMuted text-[11px]">
                   {queuedCount > 0
-                    ? `${queuedCount} பதிவு(கள்) வரிசையில் உள்ளன / ${queuedCount} update(s) queued for sync`
-                    : "இணையம் கிடைக்கும்போது தானாகவே பதிவாகும் / Updates will sync automatically when connected"}
+                    ? t("supervisor.offlineBannerQueuedText", { count: queuedCount })
+                    : t("supervisor.offlineBannerDisconnectedText")}
                 </p>
               </div>
             </div>
@@ -112,7 +116,7 @@ export default function SupervisorHomePage() {
                 disabled={isSyncing}
                 className="px-3 py-1.5 bg-accent text-white rounded-lg font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50 focus-ring shrink-0 tap-target text-xs"
               >
-                {isSyncing ? "ஒத்திசைக்கிறது..." : "இப்போதே ஒத்திசை / Sync Now"}
+                {isSyncing ? t("supervisor.syncingButton") : t("supervisor.syncNowButton")}
               </button>
             )}
           </div>
@@ -127,10 +131,10 @@ export default function SupervisorHomePage() {
             </p>
           )}
           <h1 className="text-xl sm:text-2xl font-extrabold text-textPrimary tracking-tight">
-            மேற்பார்வையாளர் பக்கம் / Supervisor Portal
+            {t("supervisor.title")}
           </h1>
           <p className="text-xs text-textMuted mt-1">
-            இன்றைய உற்பத்தியை பதிவு செய்யவும் / Tap an order to submit today&apos;s production count
+            {t("supervisor.subtitle")}
           </p>
         </div>
 
@@ -142,7 +146,7 @@ export default function SupervisorHomePage() {
             <SkeletonCard />
           </div>
         ) : orders.length === 0 ? (
-          <EmptyState message="உங்கள் பிரிவிற்கு ஒதுக்கப்பட்ட ஆர்டர்கள் எதுவும் இல்லை / No orders assigned to your unit." />
+          <EmptyState message={t("supervisor.emptyNoOrders")} />
         ) : (
           <div className="space-y-3">
             {orders.map((o) => {
@@ -169,17 +173,17 @@ export default function SupervisorHomePage() {
                     {isQueued ? (
                       <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-status-amber-bg text-status-amber border border-status-amber/25 shrink-0">
                         <span className="w-1.5 h-1.5 rounded-full bg-status-amber" />
-                        Queued / வரிசையில்
+                        {t("supervisor.statusQueued")}
                       </span>
                     ) : isSent ? (
                       <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-status-green-bg text-status-green border border-status-green/25 shrink-0">
                         <span className="font-bold">✓</span>
-                        Sent / முடிந்தது
+                        {t("supervisor.statusSent")}
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-status-amber-bg text-status-amber border border-status-amber/25 shrink-0 animate-pulse">
                         <span className="w-1.5 h-1.5 rounded-full bg-status-amber" />
-                        Pending / நிலுவை
+                        {t("supervisor.statusPending")}
                       </span>
                     )}
                   </div>
@@ -188,22 +192,22 @@ export default function SupervisorHomePage() {
                   <div className="my-2.5 p-3 bg-surface-raised rounded-lg border border-border flex items-center justify-between text-xs sm:text-sm">
                     <div>
                       <span className="text-[11px] font-semibold uppercase tracking-wider text-textMuted block">
-                        நிலை / Stage
+                        {t("supervisor.cardStage")}
                       </span>
                       <strong className="text-sm font-bold text-textPrimary">
-                        {o.stage}
+                        {translateStage(o.stage)}
                       </strong>
                     </div>
                     <div className="text-right">
                       <span className="text-[11px] font-semibold uppercase tracking-wider text-textMuted block">
-                        முன்னேற்றம் / Progress
+                        {t("supervisor.cardProgress")}
                       </span>
                       <span className="font-mono font-bold tabular-nums text-textPrimary text-sm">
                         {o.stageDone.toLocaleString()}
                       </span>
                       <span className="text-textMuted text-xs">
                         {" "}
-                        / {o.targetQty.toLocaleString()} pcs
+                        / {o.targetQty.toLocaleString()} {t("common.pcs")}
                       </span>
                     </div>
                   </div>
@@ -211,14 +215,10 @@ export default function SupervisorHomePage() {
                   {/* Remaining & Call to action */}
                   <div className="flex items-center justify-between text-xs pt-1">
                     <span className="text-textMuted">
-                      மீதமுள்ள அளவு / Remaining:{" "}
-                      <strong className="font-mono tabular-nums text-textPrimary font-bold">
-                        {o.remaining.toLocaleString()} pcs
-                      </strong>
+                      {t("supervisor.cardRemaining", { qty: o.remaining.toLocaleString() })}
                     </span>
                     <span className="text-accent font-bold text-xs inline-flex items-center gap-1">
-                      <span>பதிவு செய் / Update</span>
-                      <span>→</span>
+                      <span>{t("supervisor.cardUpdateAction")}</span>
                     </span>
                   </div>
                 </Link>

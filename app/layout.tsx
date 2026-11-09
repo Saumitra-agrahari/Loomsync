@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { I18nProvider } from "@/lib/i18n";
 
 export const metadata: Metadata = {
   title: "Tiruppur Order Tracker | பின்னலாடை உற்பத்தி கண்காணிப்பு",
@@ -36,9 +37,11 @@ export default function RootLayout({
                 } else {
                   document.documentElement.classList.remove('dark');
                 }
-                var loc = document.cookie.match(/locale=(en|ta)/);
-                if (loc && loc[1]) {
-                  document.documentElement.lang = loc[1];
+                var locMatch = document.cookie.match(/locale=(en|ta)/);
+                var locSaved = localStorage.getItem('locale');
+                var loc = (locMatch && locMatch[1]) || (locSaved === 'ta' ? 'ta' : 'en');
+                if (loc) {
+                  document.documentElement.lang = loc;
                 }
               } catch (e) {}
             })();`,
@@ -46,7 +49,9 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen bg-background text-textPrimary antialiased selection:bg-accent/20">
-        {children}
+        <I18nProvider>
+          {children}
+        </I18nProvider>
       </body>
     </html>
   );

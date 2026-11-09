@@ -6,9 +6,12 @@ import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
 import { addDays } from "@/lib/runrate";
 import { ErrorBanner } from "@/components/States";
+import { useI18n } from "@/lib/i18n";
 
 export default function NewOrderPage() {
   const router = useRouter();
+  const { t, translateStage } = useI18n();
+
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [buyers, setBuyers] = useState<any[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
@@ -87,26 +90,26 @@ export default function NewOrderPage() {
 
     if (step === 1) {
       if (!poNo.trim()) {
-        setError("PO Number is required");
+        setError(t("setup.poRequired"));
         return;
       }
       if (!style.trim()) {
-        setError("Style description is required");
+        setError(t("setup.styleRequired"));
         return;
       }
       if (!exFactoryDate) {
-        setError("Ex-Factory Date is required");
+        setError(t("setup.exDateRequired"));
         return;
       }
       setStep(2);
     } else if (step === 2) {
       if (totalQty <= 0) {
-        setError("Total order quantity must be greater than zero");
+        setError(t("setup.qtyPositiveRequired"));
         return;
       }
       for (const line of lines) {
         if (!line.colour.trim() || !line.size.trim() || line.qty <= 0) {
-          setError("All colour and size quantities must be positive integers");
+          setError(t("setup.qtyPositiveRequired"));
           return;
         }
       }
@@ -134,7 +137,7 @@ export default function NewOrderPage() {
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error?.message || "Failed to create order");
+        setError(data.error?.message || t("errors.unknownError"));
         if (data.error?.fields) setFieldErrors(data.error.fields);
         setSubmitting(false);
         return;
@@ -142,7 +145,7 @@ export default function NewOrderPage() {
 
       router.push(`/orders/${data.order.id}`);
     } catch {
-      setError("Network error while creating order");
+      setError(t("errors.networkError"));
       setSubmitting(false);
     }
   };
@@ -157,13 +160,13 @@ export default function NewOrderPage() {
             href="/"
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:underline focus-ring rounded mb-2"
           >
-            ← Back to Order Board
+            {t("detail.backToBoard")}
           </Link>
           <h1 className="text-xl sm:text-2xl font-extrabold text-textPrimary tracking-tight">
-            New Order Setup
+            {t("setup.title")}
           </h1>
           <p className="text-xs sm:text-sm text-textMuted mt-0.5">
-            Configure order PO, style, quantities, and generate back-calculated TNA production milestones
+            {t("setup.subtitle")}
           </p>
         </div>
 
@@ -176,7 +179,7 @@ export default function NewOrderPage() {
               step >= 1 ? "border-accent text-accent" : "border-border text-textMuted"
             }`}
           >
-            1. Basics
+            {t("setup.stepBasics")}
           </button>
           <button
             type="button"
@@ -187,7 +190,7 @@ export default function NewOrderPage() {
               step >= 2 ? "border-accent text-accent" : "border-border text-textMuted"
             }`}
           >
-            2. Quantities
+            {t("setup.stepQuantities")}
           </button>
           <button
             type="button"
@@ -198,7 +201,7 @@ export default function NewOrderPage() {
               step === 3 ? "border-accent text-accent" : "border-border text-textMuted"
             }`}
           >
-            3. TNA Milestones
+            {t("setup.stepMilestones")}
           </button>
         </div>
 
@@ -213,14 +216,14 @@ export default function NewOrderPage() {
                   htmlFor="po-no-input"
                   className="block text-xs font-semibold text-textMuted uppercase tracking-wider mb-1"
                 >
-                  PO Number *
+                  {t("setup.poLabel")}
                 </label>
                 <input
                   id="po-no-input"
                   type="text"
                   value={poNo}
                   onChange={(e) => setPoNo(e.target.value)}
-                  placeholder="e.g. B-PO-88295"
+                  placeholder={t("setup.poPlaceholder")}
                   className="w-full px-3.5 py-2.5 border border-border rounded-lg bg-surface text-textPrimary text-sm font-mono focus-ring tap-target"
                 />
               </div>
@@ -230,7 +233,7 @@ export default function NewOrderPage() {
                   htmlFor="buyer-select"
                   className="block text-xs font-semibold text-textMuted uppercase tracking-wider mb-1"
                 >
-                  Buyer *
+                  {t("setup.buyerLabel")}
                 </label>
                 <select
                   id="buyer-select"
@@ -251,14 +254,14 @@ export default function NewOrderPage() {
                   htmlFor="style-input"
                   className="block text-xs font-semibold text-textMuted uppercase tracking-wider mb-1"
                 >
-                  Style Description *
+                  {t("setup.styleLabel")}
                 </label>
                 <input
                   id="style-input"
                   type="text"
                   value={style}
                   onChange={(e) => setStyle(e.target.value)}
-                  placeholder="e.g. Men's heavy pique polo, charcoal"
+                  placeholder={t("setup.stylePlaceholder")}
                   className="w-full px-3.5 py-2.5 border border-border rounded-lg bg-surface text-textPrimary text-sm focus-ring tap-target"
                 />
               </div>
@@ -268,14 +271,14 @@ export default function NewOrderPage() {
                   htmlFor="ex-date-input"
                   className="block text-xs font-semibold text-textMuted uppercase tracking-wider mb-1"
                 >
-                  Ex-Factory Date *
+                  {t("setup.exDateLabel")}
                 </label>
                 <input
                   id="ex-date-input"
                   type="date"
                   value={exFactoryDate}
                   onChange={(e) => setExFactoryDate(e.target.value)}
-                  className="w-full px-3.5 py-2.5 border border-border rounded-lg bg-surface text-textPrimary text-sm focus-ring tap-target"
+                  className="w-full px-3.5 py-2.5 border border-border rounded-lg bg-surface text-textPrimary text-sm focus-ring tap-target font-mono"
                 />
               </div>
 
@@ -285,7 +288,7 @@ export default function NewOrderPage() {
                   onClick={handleNextStep}
                   className="px-5 py-2.5 bg-accent hover:bg-accent-hover text-white rounded-lg font-semibold text-sm transition-colors focus-ring tap-target shadow-xs"
                 >
-                  Next: Quantities →
+                  {t("setup.nextQuantities")}
                 </button>
               </div>
             </div>
@@ -296,10 +299,10 @@ export default function NewOrderPage() {
             <div className="space-y-4">
               <div className="flex justify-between items-center mb-2">
                 <h3 className="font-bold text-textPrimary text-sm sm:text-base">
-                  Colour & Size Breakdown
+                  {t("setup.breakdownTitle")}
                 </h3>
                 <span className="text-xs sm:text-sm font-bold bg-surface-raised border border-border text-textPrimary px-3 py-1 rounded-full font-mono tabular-nums">
-                  Total: {totalQty.toLocaleString()} pcs
+                  {t("setup.totalBadge", { total: totalQty.toLocaleString() })}
                 </span>
               </div>
 
@@ -308,21 +311,21 @@ export default function NewOrderPage() {
                   <div key={idx} className="flex items-center gap-2">
                     <input
                       type="text"
-                      placeholder="Colour"
+                      placeholder={t("setup.colourPlaceholder")}
                       value={line.colour}
                       onChange={(e) => updateLine(idx, "colour", e.target.value)}
                       className="flex-1 px-3 py-2 border border-border rounded-lg bg-surface text-textPrimary text-xs sm:text-sm focus-ring tap-target"
                     />
                     <input
                       type="text"
-                      placeholder="Size"
+                      placeholder={t("setup.sizePlaceholder")}
                       value={line.size}
                       onChange={(e) => updateLine(idx, "size", e.target.value)}
                       className="w-20 px-3 py-2 border border-border rounded-lg bg-surface text-textPrimary text-xs sm:text-sm focus-ring tap-target"
                     />
                     <input
                       type="number"
-                      placeholder="Qty"
+                      placeholder={t("setup.qtyPlaceholder")}
                       min="1"
                       value={line.qty}
                       onChange={(e) => updateLine(idx, "qty", parseInt(e.target.value) || 0)}
@@ -333,8 +336,8 @@ export default function NewOrderPage() {
                       onClick={() => removeLine(idx)}
                       disabled={lines.length === 1}
                       className="text-textMuted hover:text-status-red disabled:opacity-30 p-2 focus-ring rounded"
-                      title="Remove row"
-                      aria-label="Remove row"
+                      title={t("setup.removeRow")}
+                      aria-label={t("setup.removeRow")}
                     >
                       ✕
                     </button>
@@ -347,7 +350,7 @@ export default function NewOrderPage() {
                 onClick={addLine}
                 className="text-xs font-semibold text-accent hover:underline inline-block mt-2 focus-ring rounded p-1"
               >
-                + Add Colour / Size Row
+                {t("setup.addRow")}
               </button>
 
               <div className="flex justify-between pt-4 border-t border-border">
@@ -356,14 +359,14 @@ export default function NewOrderPage() {
                   onClick={() => setStep(1)}
                   className="px-4 py-2 border border-border rounded-lg text-sm font-medium text-textPrimary hover:bg-surface-hover focus-ring tap-target"
                 >
-                  ← Back
+                  {t("setup.backButton")}
                 </button>
                 <button
                   type="button"
                   onClick={handleNextStep}
                   className="px-5 py-2.5 bg-accent hover:bg-accent-hover text-white rounded-lg font-semibold text-sm transition-colors focus-ring tap-target shadow-xs"
                 >
-                  Next: TNA Template →
+                  {t("setup.nextMilestones")}
                 </button>
               </div>
             </div>
@@ -377,7 +380,7 @@ export default function NewOrderPage() {
                   htmlFor="template-select"
                   className="block text-xs font-semibold text-textMuted uppercase tracking-wider mb-1"
                 >
-                  Choose TNA Template
+                  {t("setup.templateLabel")}
                 </label>
                 <select
                   id="template-select"
@@ -395,28 +398,28 @@ export default function NewOrderPage() {
 
               <div>
                 <h4 className="text-xs font-bold text-textMuted uppercase tracking-wider mb-2">
-                  Auto Back-Calculated Schedule from Ex-Factory ({exFactoryDate})
+                  {t("setup.previewTitle", { date: exFactoryDate })}
                 </h4>
                 <div className="border border-border rounded-lg overflow-hidden bg-surface">
                   <table className="w-full text-xs text-left divide-y divide-border">
                     <thead className="bg-surface-raised text-textMuted uppercase tracking-wider text-[11px] font-semibold">
                       <tr>
-                        <th className="py-2.5 px-3">Stage</th>
-                        <th className="py-2.5 px-3">Planned Start</th>
-                        <th className="py-2.5 px-3">Planned End</th>
-                        <th className="py-2.5 px-3 text-right">Target Qty</th>
+                        <th className="py-2.5 px-3">{t("setup.tableStage")}</th>
+                        <th className="py-2.5 px-3">{t("setup.tableStart")}</th>
+                        <th className="py-2.5 px-3">{t("setup.tableEnd")}</th>
+                        <th className="py-2.5 px-3 text-right">{t("setup.tableTarget")}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border bg-surface font-mono tabular-nums">
                       {milestonesPreview.map((m: any, idx: number) => (
                         <tr key={idx} className="hover:bg-surface-hover/60 transition-colors">
                           <td className="py-2.5 px-3 font-semibold text-textPrimary font-sans">
-                            {m.stage}
+                            {translateStage(m.stage)}
                           </td>
                           <td className="py-2.5 px-3 text-textMuted">{m.plannedStart}</td>
                           <td className="py-2.5 px-3 font-semibold text-textPrimary">{m.plannedEnd}</td>
                           <td className="py-2.5 px-3 text-right font-bold text-accent">
-                            {totalQty.toLocaleString()} pcs
+                            {totalQty.toLocaleString()} {t("common.pcs")}
                           </td>
                         </tr>
                       ))}
@@ -426,7 +429,7 @@ export default function NewOrderPage() {
               </div>
 
               <div className="p-3.5 bg-surface-raised border border-border rounded-lg text-xs text-textMuted leading-relaxed">
-                Milestones are automatically scheduled working backwards from your ex-factory date using standard process lead times.
+                {t("setup.previewNotice")}
               </div>
 
               <div className="flex justify-between pt-4 border-t border-border">
@@ -435,7 +438,7 @@ export default function NewOrderPage() {
                   onClick={() => setStep(2)}
                   className="px-4 py-2 border border-border rounded-lg text-sm font-medium text-textPrimary hover:bg-surface-hover focus-ring tap-target"
                 >
-                  ← Back
+                  {t("setup.backButton")}
                 </button>
                 <button
                   type="button"
@@ -443,7 +446,7 @@ export default function NewOrderPage() {
                   disabled={submitting}
                   className="px-6 py-2.5 bg-accent hover:bg-accent-hover text-white rounded-lg font-bold text-sm transition-colors disabled:opacity-50 focus-ring tap-target shadow-xs"
                 >
-                  {submitting ? "Creating Order..." : "Create Order & Initialize TNA"}
+                  {submitting ? t("setup.creatingButton") : t("setup.createButton")}
                 </button>
               </div>
             </div>

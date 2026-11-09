@@ -6,11 +6,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
 import { SkeletonRow } from "@/components/Skeleton";
 import { EmptyState, ErrorBanner } from "@/components/States";
+import { useI18n } from "@/lib/i18n";
 
 function BuyerPortalContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") || "";
+  const { t, translateStage } = useI18n();
 
   const [buyer, setBuyer] = useState<any>(null);
   const [orders, setOrders] = useState<any[]>([]);
@@ -75,14 +77,16 @@ function BuyerPortalContent() {
           <div className="space-y-1">
             <div className="flex items-center gap-2.5">
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-textPrimary">
-                {buyer?.name ? `${buyer.name} Sourcing Portal` : "Buyer Sourcing Portal"}
+                {buyer?.name
+                  ? t("buyer.title", { name: buyer.name })
+                  : t("buyer.defaultTitle")}
               </h1>
               <span className="text-[11px] font-semibold bg-surface-raised text-textMuted border border-border px-2.5 py-0.5 rounded-full">
-                Verified Read-Only
+                {t("buyer.verifiedBadge")}
               </span>
             </div>
             <p className="text-xs sm:text-sm text-textMuted">
-              Live production milestones and certified shipping schedules for your export orders
+              {t("buyer.subtitle")}
             </p>
           </div>
 
@@ -105,7 +109,7 @@ function BuyerPortalContent() {
                 d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
               />
             </svg>
-            <span>Download Weekly Excel Report</span>
+            <span>{t("buyer.downloadExcelButton")}</span>
           </button>
         </div>
 
@@ -120,7 +124,7 @@ function BuyerPortalContent() {
                 : "bg-surface border border-border text-textMuted hover:text-textPrimary"
             }`}
           >
-            All Orders ({orders.length})
+            {t("buyer.filterAll", { count: orders.length })}
           </button>
           <button
             type="button"
@@ -131,7 +135,7 @@ function BuyerPortalContent() {
                 : "bg-surface border border-border text-textMuted hover:text-textPrimary"
             }`}
           >
-            On Track ({onTrackCount})
+            {t("buyer.filterOnTrack", { count: onTrackCount })}
           </button>
           <button
             type="button"
@@ -142,7 +146,7 @@ function BuyerPortalContent() {
                 : "bg-surface border border-border text-textMuted hover:text-textPrimary"
             }`}
           >
-            Delay Notices ({warningCount})
+            {t("buyer.filterNotices", { count: warningCount })}
           </button>
         </div>
 
@@ -154,8 +158,8 @@ function BuyerPortalContent() {
           <EmptyState
             message={
               statusFilter === "all"
-                ? "No orders currently on the schedule for your account."
-                : `No orders matching filter: ${statusFilter.replace("_", " ")}.`
+                ? t("buyer.emptyAll")
+                : t("buyer.emptyFiltered", { filter: statusFilter.replace("_", " ") })
             }
           />
         ) : (
@@ -181,12 +185,12 @@ function BuyerPortalContent() {
                   {o.hasDelayWarning ? (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-status-red-bg text-status-red border border-status-red/25">
                       <span className="w-2 h-2 rounded-full bg-status-red" />
-                      Delay Warning
+                      {t("buyer.statusDelayNotice")}
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-status-green-bg text-status-green border border-status-green/25">
                       <span className="font-bold">✓</span>
-                      On Track
+                      {t("buyer.statusOnTrack")}
                     </span>
                   )}
                 </div>
@@ -194,23 +198,23 @@ function BuyerPortalContent() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-3 p-3.5 bg-surface-raised rounded-lg border border-border text-xs sm:text-sm">
                   <div>
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-textMuted block">
-                      Order Quantity
+                      {t("buyer.cardOrderQty")}
                     </span>
                     <strong className="font-mono tabular-nums text-textPrimary text-sm sm:text-base font-bold">
-                      {o.totalQty.toLocaleString()} pcs
+                      {o.totalQty.toLocaleString()} {t("common.pcs")}
                     </strong>
                   </div>
                   <div>
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-textMuted block">
-                      Current Stage
+                      {t("buyer.cardCurrentStage")}
                     </span>
                     <strong className="text-textPrimary text-sm sm:text-base font-bold">
-                      {o.currentStage}
+                      {translateStage(o.currentStage)}
                     </strong>
                   </div>
                   <div>
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-textMuted block">
-                      Stage Progress
+                      {t("buyer.cardStageProgress")}
                     </span>
                     <strong className="font-mono tabular-nums text-accent text-sm sm:text-base font-bold">
                       {o.percentDone}%
@@ -218,7 +222,7 @@ function BuyerPortalContent() {
                   </div>
                   <div>
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-textMuted block">
-                      Ex-Factory Date
+                      {t("buyer.cardExDate")}
                     </span>
                     <strong className="font-mono tabular-nums text-textPrimary text-sm sm:text-base font-bold">
                       {o.exFactoryDate}
@@ -227,8 +231,7 @@ function BuyerPortalContent() {
                 </div>
 
                 <div className="flex items-center justify-end text-xs font-semibold text-accent gap-1 pt-1">
-                  <span>View Milestones & Production Photos</span>
-                  <span>→</span>
+                  <span>{t("buyer.cardViewDetails")}</span>
                 </div>
               </Link>
             ))}

@@ -3,9 +3,11 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { useI18n } from "@/lib/i18n";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { t, locale, toggleLocale, translateErrorCode } = useI18n();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +27,7 @@ export default function LoginPage() {
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error?.message || "Invalid email or password");
+        setError(data.error?.message || t("errors.invalidCredentials"));
         setLoading(false);
         return;
       }
@@ -40,7 +42,7 @@ export default function LoginPage() {
       }
       router.refresh();
     } catch {
-      setError("Network error. Please check connection and try again.");
+      setError(t("errors.networkError"));
       setLoading(false);
     }
   };
@@ -52,8 +54,21 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col justify-center items-center px-4 py-8 text-textPrimary relative">
-      <div className="absolute top-4 right-4">
+      <div className="absolute top-4 right-4 flex items-center gap-2">
         <ThemeToggle />
+        <button
+          type="button"
+          onClick={toggleLocale}
+          className="text-xs font-bold px-2.5 py-1.5 h-9 rounded-lg border border-border bg-surface hover:bg-surface-hover text-textPrimary transition-colors flex items-center justify-center gap-1 focus-ring tap-target"
+          title={t("nav.toggleLanguage")}
+          aria-label={t("nav.toggleLanguage")}
+        >
+          <span className={locale === "en" ? "text-accent font-extrabold" : "text-textMuted"}>EN</span>
+          <span className="text-textMuted text-[10px]">|</span>
+          <span className={locale === "ta" ? "text-accent font-extrabold font-tamil" : "text-textMuted font-tamil"}>
+            தமிழ்
+          </span>
+        </button>
       </div>
 
       <div className="w-full max-w-md bg-surface border border-border rounded-xl p-6 sm:p-8 shadow-subtle space-y-6">
@@ -62,10 +77,10 @@ export default function LoginPage() {
             🧵
           </div>
           <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-textPrimary">
-            Tiruppur Order Tracker
+            {t("login.title")}
           </h1>
           <p className="text-xs sm:text-sm text-textMuted">
-            Sign in to access real-time production tracking and TNA milestones
+            {t("login.subtitle")}
           </p>
         </div>
 
@@ -74,7 +89,7 @@ export default function LoginPage() {
             role="alert"
             className="p-3 bg-status-red-bg border border-status-red/30 text-status-red rounded-lg text-xs font-semibold"
           >
-            {error}
+            {translateErrorCode(error)}
           </div>
         )}
 
@@ -84,7 +99,7 @@ export default function LoginPage() {
               htmlFor="login-email"
               className="block text-xs font-semibold uppercase tracking-wider text-textMuted mb-1"
             >
-              Email Address
+              {t("login.emailLabel")}
             </label>
             <input
               id="login-email"
@@ -92,7 +107,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              placeholder="e.g. merch@demo.example"
+              placeholder={t("login.emailPlaceholder")}
               className="w-full px-3.5 py-2.5 border border-border rounded-lg bg-surface text-textPrimary focus-ring tap-target text-sm"
             />
           </div>
@@ -102,7 +117,7 @@ export default function LoginPage() {
               htmlFor="login-password"
               className="block text-xs font-semibold uppercase tracking-wider text-textMuted mb-1"
             >
-              Password
+              {t("login.passwordLabel")}
             </label>
             <input
               id="login-password"
@@ -110,7 +125,7 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              placeholder="••••••••"
+              placeholder={t("login.passwordPlaceholder")}
               className="w-full px-3.5 py-2.5 border border-border rounded-lg bg-surface text-textPrimary focus-ring tap-target text-sm"
             />
           </div>
@@ -120,14 +135,14 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full py-3 px-4 bg-accent hover:bg-accent-hover text-white font-bold rounded-lg transition-colors disabled:opacity-50 focus-ring tap-target text-sm shadow-xs"
           >
-            {loading ? "Signing in..." : "Sign In"}
+            {loading ? t("login.signingIn") : t("login.signInButton")}
           </button>
         </form>
 
         {/* Quick Demo Logins for Judges / Evaluators */}
         <div className="pt-4 border-t border-border space-y-3">
           <p className="text-[11px] font-bold text-textMuted uppercase tracking-wider text-center">
-            Demo Accounts (1-Click Fill)
+            {t("login.demoAccountsTitle")}
           </p>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <button
@@ -135,7 +150,7 @@ export default function LoginPage() {
               onClick={() => quickFill("merch@demo.example")}
               className="p-2.5 border border-border rounded-lg bg-surface-raised hover:bg-surface-hover text-left focus-ring transition-colors"
             >
-              <div className="font-semibold text-textPrimary">Merchandiser</div>
+              <div className="font-semibold text-textPrimary">{t("login.roleMerch")}</div>
               <div className="text-textMuted text-[10px] truncate">merch@demo.example</div>
             </button>
             <button
@@ -143,7 +158,7 @@ export default function LoginPage() {
               onClick={() => quickFill("sup1@demo.example")}
               className="p-2.5 border border-border rounded-lg bg-surface-raised hover:bg-surface-hover text-left focus-ring transition-colors"
             >
-              <div className="font-semibold text-textPrimary">Supervisor (Unit 1)</div>
+              <div className="font-semibold text-textPrimary">{t("login.roleSup1")}</div>
               <div className="text-textMuted text-[10px] truncate">sup1@demo.example</div>
             </button>
             <button
@@ -151,7 +166,7 @@ export default function LoginPage() {
               onClick={() => quickFill("buyerb@demo.example")}
               className="p-2.5 border border-border rounded-lg bg-surface-raised hover:bg-surface-hover text-left focus-ring transition-colors"
             >
-              <div className="font-semibold text-textPrimary">Buyer (Company B)</div>
+              <div className="font-semibold text-textPrimary">{t("login.roleBuyerB")}</div>
               <div className="text-textMuted text-[10px] truncate">buyerb@demo.example</div>
             </button>
             <button
@@ -159,15 +174,12 @@ export default function LoginPage() {
               onClick={() => quickFill("buyerc@demo.example")}
               className="p-2.5 border border-border rounded-lg bg-surface-raised hover:bg-surface-hover text-left focus-ring transition-colors"
             >
-              <div className="font-semibold text-textPrimary">Buyer (Company C)</div>
+              <div className="font-semibold text-textPrimary">{t("login.roleBuyerC")}</div>
               <div className="text-textMuted text-[10px] truncate">buyerc@demo.example</div>
             </button>
           </div>
           <p className="text-[11px] text-textMuted text-center">
-            Default password for all demo accounts:{" "}
-            <code className="bg-surface-raised border border-border px-1.5 py-0.5 rounded font-mono text-textPrimary">
-              Demo@12345
-            </code>
+            {t("login.demoPasswordNote", { pwd: "Demo@12345" })}
           </p>
         </div>
       </div>
