@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/Navbar";
 import { SkeletonCard } from "@/components/Skeleton";
-import { EmptyState, ErrorBanner, OfflineBanner } from "@/components/States";
+import { EmptyState, ErrorBanner } from "@/components/States";
 import { getQueuedUpdates, syncOutbox } from "@/lib/offline/db";
 
 export default function SupervisorHomePage() {
@@ -13,6 +13,7 @@ export default function SupervisorHomePage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [queuedStageIds, setQueuedStageIds] = useState<Set<string>>(new Set());
   const [queuedCount, setQueuedCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
@@ -41,11 +42,16 @@ export default function SupervisorHomePage() {
   const checkOutbox = async () => {
     const queued = await getQueuedUpdates();
     setQueuedCount(queued.length);
+    setQueuedStageIds(new Set(queued.map((q) => q.orderStageId)));
   };
 
   useEffect(() => {
     fetchSupervisorOrders();
     checkOutbox();
+
+    if (typeof window !== "undefined") {
+      setIsOnline(navigator.onLine);
+    }
 
     const handleOnline = () => {
       setIsOnline(true);
@@ -71,27 +77,50 @@ export default function SupervisorHomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col text-textPrimary">
       <Navbar />
 
-      {/* Offline Banner */}
+      {/* Calm Offline Banner */}
       {(!isOnline || queuedCount > 0) && (
-        <OfflineBanner
-          queuedCount={queuedCount}
-          onSync={handleSync}
-          isSyncing={isSyncing}
-        />
+        <aside
+          aria-label="Offline status banner"
+          className="bg-surface-raised border-b border-border text-textPrimary px-4 py-3"
+        >
+          <div className="max-w-lg mx-auto flex items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-status-amber animate-pulse shrink-0" />
+              <div>
+                <p className="font-semibold text-textPrimary">
+                  {!isOnline ? "ஆஃப்லைன் பயன்முறை / Offline Mode" : "ஒத்திசைவு நிலுவை / Sync Pending"}
+                </p>
+                <p className="text-textMuted text-[11px]">
+                  {queuedCount > 0
+                    ? `${queuedCount} பதிவு(கள்) வரிசையில் உள்ளன / ${queuedCount} update(s) queued for sync`
+                    : "இணையம் கிடைக்கும்போது தானாகவே பதிவாகும் / Updates will sync automatically when connected"}
+                </p>
+              </div>
+            </div>
+            {isOnline && queuedCount > 0 && (
+              <button
+                type="button"
+                onClick={handleSync}
+                disabled={isSyncing}
+                className="px-3 py-1.5 bg-accent text-white rounded-lg font-semibold hover:bg-accent-hover transition-colors disabled:opacity-50 focus-ring shrink-0 tap-target text-xs"
+              >
+                {isSyncing ? "ஒத்திசைக்கிறது..." : "இப்போதே ஒத்திசை / Sync Now"}
+              </button>
+            )}
+          </div>
+        </aside>
       )}
 
-      <main className="flex-1 max-w-lg w-full mx-auto px-4 py-5">
-        <div className="mb-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl sm:text-2xl font-bold text-textPrimary">
-              மேற்பார்வையாளர் பக்கம் / Supervisor Portal
-            </h1>
-          </div>
-          <p className="text-xs text-textSecondary mt-1">
-            இன்றைய உற்பத்தியை பதிவு செய்யவும் / Enter today&apos;s production count
+      <main className="flex-1 max-w-lg w-full mx-auto px-4 py-5 space-y-4">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-extrabold text-textPrimary tracking-tight">
+            மேற்பார்வையாளர் பக்கம் / Supervisor Portal
+          </h1>
+          <p className="text-xs text-textMuted mt-1">
+            இன்றைய உற்பத்தியை பதிவு செய்யவும் / Tap an order to submit today&apos;s production count
           </p>
         </div>
 
@@ -105,49 +134,86 @@ export default function SupervisorHomePage() {
         ) : orders.length === 0 ? (
           <EmptyState message="உங்கள் பிரிவிற்கு ஒதுக்கப்பட்ட ஆர்டர்கள் எதுவும் இல்லை / No orders assigned to your unit." />
         ) : (
-          <div className="space-y-3.5">
-            {orders.map((o) => (
-              <Link
-                key={o.orderStageId}
-                href={`/s/${o.orderStageId}`}
-                className="block bg-white border border-border rounded-lg p-4 shadow-sm hover:border-accent active:bg-surfaceHover transition-colors tap-target"
-              >
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div>
-                    <span className="font-bold text-accent text-lg">{o.poNo}</span>
-                    <p className="text-xs text-textSecondary font-medium">{o.style}</p>
+          <div className="space-y-3">
+            {orders.map((o) => {
+              const isQueued = queuedStageIds.has(o.orderStageId);
+              const isSent = o.todayStatus === "sent";
+
+              return (
+                <Link
+                  key={o.orderStageId}
+                  href={`/s/${o.orderStageId}`}
+                  className="block bg-surface border-2 border-border hover:border-accent rounded-xl p-4 sm:p-5 shadow-subtle hover:shadow-md transition-all active:scale-[0.99] focus-ring"
+                >
+                  <div className="flex items-start justify-between gap-3 mb-2.5">
+                    <div>
+                      <span className="font-mono font-extrabold text-accent text-lg sm:text-xl tracking-tight">
+                        {o.poNo}
+                      </span>
+                      <p className="text-xs font-semibold text-textPrimary mt-0.5">
+                        {o.style}
+                      </p>
+                    </div>
+
+                    {/* Status Badge */}
+                    {isQueued ? (
+                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-status-amber-bg text-status-amber border border-status-amber/25 shrink-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-status-amber" />
+                        Queued / வரிசையில்
+                      </span>
+                    ) : isSent ? (
+                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-status-green-bg text-status-green border border-status-green/25 shrink-0">
+                        <span className="font-bold">✓</span>
+                        Sent / முடிந்தது
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-status-amber-bg text-status-amber border border-status-amber/25 shrink-0 animate-pulse">
+                        <span className="w-1.5 h-1.5 rounded-full bg-status-amber" />
+                        Pending / நிலுவை
+                      </span>
+                    )}
                   </div>
 
-                  {o.todayStatus === "sent" ? (
-                    <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                      ✓ Sent / அனுப்பப்பட்டது
+                  {/* Stage & Progress snapshot */}
+                  <div className="my-2.5 p-3 bg-surface-raised rounded-lg border border-border flex items-center justify-between text-xs sm:text-sm">
+                    <div>
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-textMuted block">
+                        நிலை / Stage
+                      </span>
+                      <strong className="text-sm font-bold text-textPrimary">
+                        {o.stage}
+                      </strong>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-textMuted block">
+                        முன்னேற்றம் / Progress
+                      </span>
+                      <span className="font-mono font-bold tabular-nums text-textPrimary text-sm">
+                        {o.stageDone.toLocaleString()}
+                      </span>
+                      <span className="text-textMuted text-xs">
+                        {" "}
+                        / {o.targetQty.toLocaleString()} pcs
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Remaining & Call to action */}
+                  <div className="flex items-center justify-between text-xs pt-1">
+                    <span className="text-textMuted">
+                      மீதமுள்ள அளவு / Remaining:{" "}
+                      <strong className="font-mono tabular-nums text-textPrimary font-bold">
+                        {o.remaining.toLocaleString()} pcs
+                      </strong>
                     </span>
-                  ) : (
-                    <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
-                      ● Pending / நிலுவை
+                    <span className="text-accent font-bold text-xs inline-flex items-center gap-1">
+                      <span>பதிவு செய் / Update</span>
+                      <span>→</span>
                     </span>
-                  )}
-                </div>
-
-                <div className="my-2 p-2.5 bg-surface rounded border border-border flex items-center justify-between text-xs sm:text-sm">
-                  <div>
-                    <span className="text-textSecondary block text-[11px]">நிலை / Stage</span>
-                    <strong className="text-textPrimary text-sm">{o.stage}</strong>
                   </div>
-                  <div className="text-right">
-                    <span className="text-textSecondary block text-[11px]">முன்னேற்றம் / Progress</span>
-                    <strong className="text-textPrimary text-sm">
-                      {o.stageDone.toLocaleString()} / {o.targetQty.toLocaleString()} pcs
-                    </strong>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-xs text-textSecondary pt-1">
-                  <span>மீதமுள்ள அளவு: <strong>{o.remaining.toLocaleString()} pcs</strong></span>
-                  <span className="text-accent font-bold">பதிவு செய் / Update →</span>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              );
+            })}
           </div>
         )}
       </main>

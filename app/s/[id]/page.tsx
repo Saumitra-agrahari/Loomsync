@@ -19,16 +19,30 @@ export default function SupervisorUpdatePage() {
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [submittedSuccess, setSubmittedSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showExcessConfirm, setShowExcessConfirm] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
 
   useEffect(() => {
-    // Check Web Speech API support
-    if (typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window)) {
-      setSpeechSupported(true);
-    }
+    if (typeof window !== "undefined") {
+      setIsOnline(navigator.onLine);
+      if ("SpeechRecognition" in window || "webkitSpeechRecognition" in window) {
+        setSpeechSupported(true);
+      }
 
-    // Fetch order stage info
+      const handleOnline = () => setIsOnline(true);
+      const handleOffline = () => setIsOnline(false);
+      window.addEventListener("online", handleOnline);
+      window.addEventListener("offline", handleOffline);
+      return () => {
+        window.removeEventListener("online", handleOnline);
+        window.removeEventListener("offline", handleOffline);
+      };
+    }
+  }, []);
+
+  useEffect(() => {
     fetch("/api/supervisor/orders")
       .then((r) => r.json())
       .then((data) => {
@@ -42,29 +56,36 @@ export default function SupervisorUpdatePage() {
       .catch(() => setError("Failed to load stage info"));
   }, [stageId]);
 
-  // Voice speech-to-text handler (Web Speech API ta-IN / en-IN)
+  // Voice speech-to-text handler (Web Speech API ta-IN)
   const handleToggleVoice = () => {
     if (!speechSupported) return;
 
-    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    const recognition = new SpeechRec();
-    recognition.lang = "ta-IN"; // Tamil voice recognition with English mixed support
-    recognition.continuous = false;
-    recognition.interimResults = false;
+    try {
+      const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      const recognition = new SpeechRec();
+      recognition.lang = "ta-IN";
+      recognition.continuous = false;
+      recognition.interimResults = false;
 
-    recognition.onstart = () => setIsListening(true);
-    recognition.onend = () => setIsListening(false);
-    recognition.onerror = () => setIsListening(false);
+      recognition.onstart = () => setIsListening(true);
+      recognition.onend = () => setIsListening(false);
+      recognition.onerror = () => setIsListening(false);
 
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      setNote((prev) => (prev ? `${prev} ${transcript}` : transcript));
-    };
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0]?.[0]?.transcript;
+        if (transcript) {
+          setNote((prev) => (prev ? `${prev} ${transcript}` : transcript));
+        }
+      };
 
-    if (isListening) {
-      recognition.stop();
-    } else {
-      recognition.start();
+      if (isListening) {
+        recognition.stop();
+        setIsListening(false);
+      } else {
+        recognition.start();
+      }
+    } catch {
+      setIsListening(false);
     }
   };
 
@@ -95,15 +116,22 @@ export default function SupervisorUpdatePage() {
     reader.readAsDataURL(file);
   };
 
+  const handleRemovePhoto = () => {
+    setPhotoPreview(null);
+    setPhotoKey(null);
+  };
+
+  const parsedQty = parseInt(qty, 10);
+  const isValidQty = !isNaN(parsedQty) && parsedQty >= 0 && qty.trim() !== "";
+
   const handleSend = async (bypassExcess: boolean = false) => {
     setError(null);
-    const numQty = parseInt(qty, 10);
-    if (isNaN(numQty) || numQty < 0) {
+    if (!isValidQty) {
       setError("தயவுசெய்து சரியான எண்ணிக்கையை உள்ளிடவும் / Please enter a valid quantity.");
       return;
     }
 
-    if (!bypassExcess && orderStage && numQty > orderStage.remaining) {
+    if (!bypassExcess && orderStage && parsedQty > orderStage.remaining) {
       setShowExcessConfirm(true);
       return;
     }
@@ -121,166 +149,283 @@ export default function SupervisorUpdatePage() {
       stage: orderStage?.stage || "",
       unitId: "",
       reportedDate: todayStr,
-      qty: numQty,
+      qty: parsedQty,
       note: note.trim() || undefined,
       photoKey: photoKey || undefined,
       photoBase64: photoPreview || undefined,
       clientTs: new Date().toISOString(),
     };
 
-    // If offline or online: write to Dexie outbox first, then attempt immediate sync!
     try {
+      // Optimistic save to Dexie outbox
       await queueUpdate(updateItem);
 
       if (navigator.onLine) {
-        await syncOutbox();
+        // Non-blocking sync attempt in background
+        syncOutbox().catch(() => {});
       }
 
-      router.push("/s");
-      router.refresh();
+      setSubmittedSuccess(true);
+      setTimeout(() => {
+        router.push("/s");
+        router.refresh();
+      }, 900);
     } catch {
-      // Offline fallback succeeded
-      router.push("/s");
+      // Even if local queue fails somehow, show fallback
+      setSubmittedSuccess(true);
+      setTimeout(() => {
+        router.push("/s");
+      }, 900);
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col pb-24">
+    <div className="min-h-screen bg-background flex flex-col pb-28 text-textPrimary">
       <Navbar />
 
-      <main className="flex-1 max-w-md w-full mx-auto px-4 py-5">
-        <div className="mb-4">
+      {/* Subtle Offline notification if disconnected */}
+      {!isOnline && (
+        <aside
+          aria-label="Offline status"
+          className="bg-surface-raised border-b border-border px-4 py-2 text-xs flex items-center justify-center gap-2 text-textPrimary"
+        >
+          <span className="w-2 h-2 rounded-full bg-status-amber animate-pulse" />
+          <span>
+            ஆஃப்லைன் பயன்முறை: பதிவு வரிசையில் சேமிக்கப்படும் / Offline mode: update will sync automatically when connected
+          </span>
+        </aside>
+      )}
+
+      <main className="flex-1 max-w-md w-full mx-auto px-4 py-5 space-y-4">
+        <div>
           <button
+            type="button"
             onClick={() => router.push("/s")}
-            className="text-xs font-semibold text-accent hover:underline mb-2 flex items-center gap-1"
+            className="text-xs font-semibold text-accent hover:underline mb-2 flex items-center gap-1.5 focus-ring rounded tap-target"
           >
             ← பின்செல் / Back to List
           </button>
-          <h1 className="text-xl sm:text-2xl font-bold text-textPrimary">
+          <h1 className="text-xl sm:text-2xl font-extrabold text-textPrimary tracking-tight">
             தினசரி உற்பத்தி பதிவு / Daily Update
           </h1>
         </div>
 
-        {error && <div className="mb-4"><ErrorBanner message={error} /></div>}
+        {error && <ErrorBanner message={error} />}
 
-        {orderStage && (
-          <div className="bg-white border border-border rounded-lg p-5 shadow-sm space-y-4">
-            {/* Stage Info Header */}
-            <div className="p-3 bg-surface rounded-md border border-border">
-              <div className="flex justify-between items-start">
+        {/* Warm Non-Blocking Success Banner */}
+        {submittedSuccess && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="p-4 bg-status-green-bg border border-status-green/30 rounded-xl text-center space-y-1 animate-in fade-in"
+          >
+            <div className="text-2xl">✓</div>
+            <p className="font-bold text-status-green text-sm sm:text-base">
+              பதிவு செய்யப்பட்டது. நன்றி!
+            </p>
+            <p className="text-xs text-textMuted">
+              Saved. Thank you. Returning to supervisor list...
+            </p>
+          </div>
+        )}
+
+        {orderStage && !submittedSuccess && (
+          <div className="bg-surface border-2 border-border rounded-xl p-5 shadow-subtle space-y-5">
+            {/* Stage Info Header (Prefilled stage and order details) */}
+            <div className="p-3.5 bg-surface-raised rounded-lg border border-border space-y-2">
+              <div className="flex justify-between items-start gap-2">
                 <div>
-                  <span className="font-bold text-accent text-lg">{orderStage.poNo}</span>
-                  <p className="text-xs text-textSecondary">{orderStage.style}</p>
+                  <span className="font-mono font-extrabold text-accent text-lg">
+                    {orderStage.poNo}
+                  </span>
+                  <p className="text-xs font-semibold text-textPrimary mt-0.5">
+                    {orderStage.style}
+                  </p>
                 </div>
-                <span className="bg-accent text-white px-2.5 py-0.5 rounded text-xs font-bold">
-                  {orderStage.stage}
-                </span>
+                <div className="text-right">
+                  <span className="inline-block bg-accent text-white px-2.5 py-1 rounded-md text-xs font-bold font-mono">
+                    {orderStage.stage}
+                  </span>
+                </div>
               </div>
-              <div className="mt-2 text-xs flex justify-between text-textSecondary border-t border-border pt-2">
-                <span>முடிந்தது: <strong>{orderStage.stageDone.toLocaleString()}</strong> pcs</span>
-                <span>மீதம்: <strong className="text-textPrimary">{orderStage.remaining.toLocaleString()}</strong> pcs</span>
+
+              {/* Calm Context: Total completed so far vs target */}
+              <div className="pt-2 border-t border-border flex justify-between items-center text-xs text-textMuted">
+                <span>
+                  முடிந்தது / Made so far:{" "}
+                  <strong className="font-mono tabular-nums text-textPrimary font-bold">
+                    {orderStage.stageDone.toLocaleString()} pcs
+                  </strong>
+                </span>
+                <span>
+                  இலக்கு / Target:{" "}
+                  <strong className="font-mono tabular-nums text-textPrimary font-bold">
+                    {orderStage.targetQty.toLocaleString()} pcs
+                  </strong>
+                </span>
               </div>
             </div>
 
             {/* 1. Large Numeric Quantity Input */}
             <div>
-              <label className="block text-xs font-bold text-textSecondary uppercase tracking-wider mb-1">
+              <label
+                htmlFor="daily-qty-input"
+                className="block text-xs font-extrabold uppercase tracking-wider text-textMuted mb-1.5"
+              >
                 இன்று உற்பத்தியான எண்ணிக்கை / Quantity Made Today *
               </label>
-              <input
-                type="number"
-                pattern="[0-9]*"
-                inputMode="numeric"
-                value={qty}
-                onChange={(e) => setQty(e.target.value)}
-                placeholder="0"
-                className="w-full text-3xl font-bold px-4 py-3 border-2 border-border focus:border-accent rounded-lg text-textPrimary text-center tap-target"
-                autoFocus
-              />
+              <div className="relative">
+                <input
+                  id="daily-qty-input"
+                  type="number"
+                  pattern="[0-9]*"
+                  inputMode="numeric"
+                  value={qty}
+                  onChange={(e) => setQty(e.target.value)}
+                  placeholder="0"
+                  autoFocus
+                  className="w-full text-3xl sm:text-4xl font-extrabold font-mono tabular-nums px-4 py-3.5 border-2 border-border focus:border-accent bg-surface rounded-xl text-textPrimary text-center focus-ring tap-target"
+                />
+              </div>
+              <p className="text-[11px] text-textMuted text-center mt-1">
+                மீதமுள்ள அளவு / Remaining: {orderStage.remaining.toLocaleString()} pcs
+              </p>
             </div>
 
-            {/* 2. Photo Upload / Camera */}
+            {/* 2. Photo Upload / Camera with thumbnail & clear remove button */}
             <div>
-              <label className="block text-xs font-bold text-textSecondary uppercase tracking-wider mb-1">
+              <label className="block text-xs font-extrabold uppercase tracking-wider text-textMuted mb-1.5">
                 புகைப்படம் / Floor Photo (Optional)
               </label>
-              <label className="flex flex-col items-center justify-center p-3 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-surface transition-colors tap-target">
-                {photoPreview ? (
-                  <div className="relative w-full">
-                    <img src={photoPreview} alt="Preview" className="h-32 w-full object-cover rounded" />
-                    <span className="text-xs text-emerald-700 font-semibold block mt-1 text-center">
-                      ✓ Photo attached (&le;300 KB)
+              {photoPreview ? (
+                <div className="p-3 bg-surface-raised rounded-xl border border-border space-y-2">
+                  <div className="relative w-full rounded-lg overflow-hidden border border-border">
+                    <img
+                      src={photoPreview}
+                      alt="Floor photo preview"
+                      className="h-44 w-full object-cover"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-xs pt-1">
+                    <span className="text-status-green font-semibold flex items-center gap-1">
+                      ✓ படம் இணைக்கப்பட்டது / Photo attached (&le;300 KB)
                     </span>
+                    <button
+                      type="button"
+                      onClick={handleRemovePhoto}
+                      className="px-2.5 py-1 text-xs font-semibold text-status-red hover:bg-status-red-bg border border-status-red/30 rounded-md focus-ring tap-target"
+                    >
+                      நீக்கு / Remove
+                    </button>
                   </div>
-                ) : (
-                  <div className="text-center py-2">
-                    <svg className="w-8 h-8 mx-auto text-textSecondary mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center p-5 border-2 border-dashed border-border rounded-xl cursor-pointer hover:bg-surface-raised transition-colors focus-ring tap-target">
+                  <div className="w-12 h-12 rounded-full bg-surface-raised flex items-center justify-center text-accent mb-2">
+                    <svg
+                      className="w-6 h-6"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
                     </svg>
-                    <span className="text-xs font-semibold text-accent">படம் எடுக்கவும் / Camera</span>
                   </div>
-                )}
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  capture="environment"
-                  onChange={handlePhotoSelect}
-                  className="hidden"
-                />
-              </label>
+                  <span className="text-sm font-bold text-accent">
+                    படம் எடுக்கவும் / Camera or Upload
+                  </span>
+                  <span className="text-[11px] text-textMuted mt-0.5">
+                    தானாகவே சுருக்கப்படும் / Compressed &le;300 KB
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    capture="environment"
+                    onChange={handlePhotoSelect}
+                    className="hidden"
+                  />
+                </label>
+              )}
             </div>
 
-            {/* 3. Note with Voice Mic Input */}
+            {/* 3. Note with Voice Mic Input and transcript preview */}
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-bold text-textSecondary uppercase tracking-wider">
+              <div className="flex items-center justify-between mb-1.5">
+                <label
+                  htmlFor="floor-note-text"
+                  className="text-xs font-extrabold uppercase tracking-wider text-textMuted"
+                >
                   குறிப்பு / Floor Note (Tamil / English)
                 </label>
                 {speechSupported && (
                   <button
                     type="button"
                     onClick={handleToggleVoice}
-                    className={`text-xs px-2.5 py-1 rounded-full font-semibold flex items-center gap-1 transition-colors ${
-                      isListening ? "bg-rose-100 text-rose-800 animate-pulse" : "bg-surface border text-accent"
+                    className={`text-xs px-3 py-1.5 rounded-full font-bold flex items-center gap-1.5 transition-colors focus-ring tap-target ${
+                      isListening
+                        ? "bg-status-red text-white animate-pulse"
+                        : "bg-surface-raised border border-border text-accent hover:bg-surface-hover"
                     }`}
                   >
                     <span>🎤</span>
-                    <span>{isListening ? "கேட்கிறது..." : "தமிழில் பேசு"}</span>
+                    <span>{isListening ? "கேட்கிறது... / Listening" : "தமிழில் பேசு / Mic"}</span>
                   </button>
                 )}
               </div>
               <textarea
+                id="floor-note-text"
                 rows={2}
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="எ.கா: தையல் இயந்திரம் பழுது / Machine breakdown, shortage..."
-                className="w-full px-3 py-2 border border-border rounded-lg text-sm text-textPrimary tap-target font-tamil"
+                placeholder="எ.கா: தையல் இயந்திரம் பழுது / Machine breakdown, yarn delay..."
+                className="w-full px-3.5 py-2.5 border-2 border-border focus:border-accent rounded-xl text-sm text-textPrimary bg-surface font-tamil focus-ring"
               />
+              {isListening && (
+                <p className="text-xs text-status-red font-medium mt-1 animate-pulse">
+                  ● குரலை கேட்கிறது... பேசி முடிக்கவும் / Listening... Speak now.
+                </p>
+              )}
             </div>
           </div>
         )}
 
-        {/* Excess Qty Warning Modal */}
+        {/* Excess Qty Warning Dialog */}
         {showExcessConfirm && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg max-w-sm w-full p-5 shadow-xl border border-border text-center">
-              <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto mb-3 text-xl font-bold">
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="excess-title"
+          >
+            <div className="bg-surface rounded-xl max-w-sm w-full p-6 shadow-xl border border-border text-center space-y-3">
+              <div className="w-12 h-12 rounded-full bg-status-amber-bg text-status-amber border border-status-amber/30 flex items-center justify-center mx-auto text-xl font-bold">
                 ⚠️
               </div>
-              <h3 className="text-base font-bold text-textPrimary mb-1">
+              <h3 id="excess-title" className="text-base font-bold text-textPrimary">
                 எண்ணிக்கை எச்சரிக்கை / Excess Quantity
               </h3>
-              <p className="text-xs text-textSecondary mb-4">
+              <p className="text-xs text-textMuted leading-relaxed">
                 உள்ளிட்ட எண்ணிக்கை ({qty} pcs) மீதமுள்ள அளவை ({orderStage?.remaining} pcs) விட அதிகமாக உள்ளது. தொடர விரும்புகிறீர்களா?
               </p>
-              <div className="flex gap-2">
+              <div className="flex gap-2.5 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowExcessConfirm(false)}
-                  className="flex-1 py-2 border border-border rounded text-xs font-medium tap-target"
+                  className="flex-1 py-2.5 border border-border rounded-lg text-xs font-semibold text-textPrimary hover:bg-surface-hover focus-ring tap-target"
                 >
                   சரிபார் / Edit
                 </button>
@@ -290,7 +435,7 @@ export default function SupervisorUpdatePage() {
                     setShowExcessConfirm(false);
                     handleSend(true);
                   }}
-                  className="flex-1 py-2 bg-amber-600 text-white rounded text-xs font-bold tap-target"
+                  className="flex-1 py-2.5 bg-accent text-white rounded-lg text-xs font-bold hover:bg-accent-hover transition-colors focus-ring tap-target"
                 >
                   தொடரவும் / Yes, Proceed
                 </button>
@@ -299,20 +444,28 @@ export default function SupervisorUpdatePage() {
           </div>
         )}
 
-        {/* Sticky Send Button */}
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur border-t border-border z-20 flex justify-center">
-          <div className="max-w-md w-full">
-            <button
-              type="button"
-              onClick={() => handleSend(false)}
-              disabled={submitting}
-              className="w-full py-3.5 bg-accent hover:bg-accent-hover active:scale-[0.99] text-white font-bold text-base rounded-lg shadow-md transition-all tap-target flex items-center justify-center gap-2"
-            >
-              <span>{submitting ? "அனுப்பப்படுகிறது..." : "அனுப்பு / Send Daily Update"}</span>
-              <span>→</span>
-            </button>
+        {/* Sticky Send Button (disabled until quantity entered; Tamil + English label) */}
+        {!submittedSuccess && (
+          <div className="fixed bottom-0 left-0 right-0 p-4 bg-surface/95 backdrop-blur border-t border-border z-30 flex justify-center shadow-lg">
+            <div className="max-w-md w-full">
+              <button
+                type="button"
+                onClick={() => handleSend(false)}
+                disabled={submitting || !isValidQty}
+                className="w-full py-4 bg-accent hover:bg-accent-hover active:scale-[0.99] text-white font-extrabold text-base rounded-xl shadow-md transition-all disabled:opacity-40 disabled:cursor-not-allowed focus-ring tap-target flex items-center justify-center gap-2"
+              >
+                <span>
+                  {submitting
+                    ? "அனுப்பப்படுகிறது... / Submitting..."
+                    : !isOnline
+                    ? "வரிசையில் சேர் / Queue Offline"
+                    : "அனுப்பு / Send Daily Update"}
+                </span>
+                <span>→</span>
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </main>
     </div>
   );
