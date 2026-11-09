@@ -7,9 +7,11 @@ import { Navbar } from "@/components/Navbar";
 import { SkeletonCard } from "@/components/Skeleton";
 import { EmptyState, ErrorBanner } from "@/components/States";
 import { getQueuedUpdates, syncOutbox } from "@/lib/offline/db";
+import { getTimeOfDayGreeting } from "@/lib/ui/greeting";
 
 export default function SupervisorHomePage() {
   const router = useRouter();
+  const [user, setUser] = useState<any>(null);
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -17,6 +19,7 @@ export default function SupervisorHomePage() {
   const [queuedCount, setQueuedCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
+  const greeting = getTimeOfDayGreeting(user?.name, "ta");
 
   const fetchSupervisorOrders = async () => {
     setLoading(true);
@@ -27,6 +30,8 @@ export default function SupervisorHomePage() {
         router.push("/login");
         return;
       }
+      const meData = await meRes.json();
+      setUser(meData.user);
 
       const res = await fetch("/api/supervisor/orders");
       if (!res.ok) throw new Error("Failed to load unit orders");
@@ -116,6 +121,11 @@ export default function SupervisorHomePage() {
 
       <main className="flex-1 max-w-lg w-full mx-auto px-4 py-5 space-y-4">
         <div>
+          {greeting && (
+            <p className="text-xs font-semibold text-accent mb-0.5 animate-in fade-in">
+              {greeting}
+            </p>
+          )}
           <h1 className="text-xl sm:text-2xl font-extrabold text-textPrimary tracking-tight">
             மேற்பார்வையாளர் பக்கம் / Supervisor Portal
           </h1>

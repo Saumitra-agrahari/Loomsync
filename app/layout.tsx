@@ -36,6 +36,10 @@ export default function RootLayout({
                 } else {
                   document.documentElement.classList.remove('dark');
                 }
+                var loc = document.cookie.match(/locale=(en|ta)/);
+                if (loc && loc[1]) {
+                  document.documentElement.lang = loc[1];
+                }
               } catch (e) {}
             })();`,
           }}

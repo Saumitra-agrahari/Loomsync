@@ -7,12 +7,19 @@ import { Navbar } from "@/components/Navbar";
 import { StatusChip } from "@/components/StatusChip";
 import { SkeletonRow } from "@/components/Skeleton";
 import { EmptyState, ErrorBanner } from "@/components/States";
+import { getTimeOfDayGreeting } from "@/lib/ui/greeting";
 
 function OrderBoardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const [user, setUser] = useState<any>(null);
+  const [locale, setLocale] = useState<"en" | "ta">("en");
+
+  useEffect(() => {
+    const match = document.cookie.match(/locale=(en|ta)/);
+    if (match) setLocale(match[1] as "en" | "ta");
+  }, []);
   const [orders, setOrders] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>({ red: 0, amber: 0, green: 0, grey: 0, total: 0 });
   const [buyers, setBuyers] = useState<any[]>([]);
@@ -28,6 +35,7 @@ function OrderBoardContent() {
   const selectedStatus = searchParams.get("status") || "";
 
   const activeFilterCount = [selectedBuyer, selectedUnit, selectedWeek, selectedStatus].filter(Boolean).length;
+  const greeting = getTimeOfDayGreeting(user?.name, locale);
 
   const fetchBoardData = async () => {
     setLoading(true);
@@ -325,9 +333,17 @@ function OrderBoardContent() {
           <SkeletonRow count={5} />
         ) : orders.length === 0 ? (
           <EmptyState
-            message="No orders match the selected filters. / தேர்ந்தெடுத்த வடிகட்டிகளுக்கு பொருந்தும் ஆர்டர்கள் எதுவும் இல்லை."
-            actionText="Clear Filters / வடிகட்டிகளை அகற்று"
-            onAction={clearAllFilters}
+            message={
+              selectedStatus === "red"
+                ? "No critical delay orders at this time. All active orders are progressing."
+                : selectedStatus === "amber"
+                ? "No trailing orders at this time. Production run-rates are on target."
+                : summary.total === 0
+                ? "No orders need attention today. All 11 orders are on track."
+                : "No orders match the selected filters. Clear filters to view all orders."
+            }
+            actionText={activeFilterCount > 0 ? (locale === "ta" ? "வடிகட்டிகளை அகற்று" : "Clear All Filters") : undefined}
+            onAction={activeFilterCount > 0 ? clearAllFilters : undefined}
           />
         ) : (
           <div className="space-y-3">

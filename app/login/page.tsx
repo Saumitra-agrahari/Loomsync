@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -39,7 +40,7 @@ export default function LoginPage() {
       }
       router.refresh();
     } catch {
-      setError("Network error. Please try again.");
+      setError("Network error. Please check connection and try again.");
       setLoading(false);
     }
   };
@@ -50,100 +51,124 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col justify-center items-center px-4 py-8">
-      <div className="w-full max-w-md bg-white border border-border rounded-lg p-6 sm:p-8 shadow-sm">
-        <div className="text-center mb-6">
-          <div className="w-10 h-10 rounded-full bg-accent text-white flex items-center justify-center font-bold text-lg mx-auto mb-2">
-            T
+    <div className="min-h-screen bg-background flex flex-col justify-center items-center px-4 py-8 text-textPrimary relative">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
+
+      <div className="w-full max-w-md bg-surface border border-border rounded-xl p-6 sm:p-8 shadow-subtle space-y-6">
+        <div className="text-center space-y-2">
+          <div className="w-12 h-12 rounded-xl bg-accent text-white flex items-center justify-center font-bold text-xl mx-auto shadow-subtle">
+            🧵
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-textPrimary">Tiruppur Order Tracker</h1>
-          <p className="text-xs sm:text-sm text-textSecondary mt-1">Sign in to your factory or buyer account</p>
+          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-textPrimary">
+            Tiruppur Order Tracker
+          </h1>
+          <p className="text-xs sm:text-sm text-textMuted">
+            Sign in to access real-time production tracking and TNA milestones
+          </p>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded text-sm font-medium">
+          <div
+            role="alert"
+            className="p-3 bg-status-red-bg border border-status-red/30 text-status-red rounded-lg text-xs font-semibold"
+          >
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-textSecondary uppercase tracking-wider mb-1">
+            <label
+              htmlFor="login-email"
+              className="block text-xs font-semibold uppercase tracking-wider text-textMuted mb-1"
+            >
               Email Address
             </label>
             <input
+              id="login-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
               placeholder="e.g. merch@demo.example"
-              className="w-full px-3 py-2 border border-border rounded-md text-textPrimary focus:outline-none focus:ring-2 focus:ring-accent tap-target"
+              className="w-full px-3.5 py-2.5 border border-border rounded-lg bg-surface text-textPrimary focus-ring tap-target text-sm"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-textSecondary uppercase tracking-wider mb-1">
+            <label
+              htmlFor="login-password"
+              className="block text-xs font-semibold uppercase tracking-wider text-textMuted mb-1"
+            >
               Password
             </label>
             <input
+              id="login-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               placeholder="••••••••"
-              className="w-full px-3 py-2 border border-border rounded-md text-textPrimary focus:outline-none focus:ring-2 focus:ring-accent tap-target"
+              className="w-full px-3.5 py-2.5 border border-border rounded-lg bg-surface text-textPrimary focus-ring tap-target text-sm"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 px-4 bg-accent hover:bg-accent-hover text-white font-medium rounded-md transition-colors disabled:opacity-50 tap-target"
+            className="w-full py-3 px-4 bg-accent hover:bg-accent-hover text-white font-bold rounded-lg transition-colors disabled:opacity-50 focus-ring tap-target text-sm shadow-xs"
           >
             {loading ? "Signing in..." : "Sign In"}
           </button>
         </form>
 
-        {/* Quick Demo Logins for Judges / Reviewers */}
-        <div className="mt-6 pt-6 border-t border-border">
-          <p className="text-xs font-semibold text-textSecondary uppercase tracking-wider mb-2 text-center">
-            Demo Logins (1-Click Fill)
+        {/* Quick Demo Logins for Judges / Evaluators */}
+        <div className="pt-4 border-t border-border space-y-3">
+          <p className="text-[11px] font-bold text-textMuted uppercase tracking-wider text-center">
+            Demo Accounts (1-Click Fill)
           </p>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <button
               type="button"
               onClick={() => quickFill("merch@demo.example")}
-              className="p-2 border border-border rounded bg-surface hover:bg-surfaceHover text-left"
+              className="p-2.5 border border-border rounded-lg bg-surface-raised hover:bg-surface-hover text-left focus-ring transition-colors"
             >
               <div className="font-semibold text-textPrimary">Merchandiser</div>
-              <div className="text-textSecondary text-[11px] truncate">merch@demo.example</div>
+              <div className="text-textMuted text-[10px] truncate">merch@demo.example</div>
             </button>
             <button
               type="button"
               onClick={() => quickFill("sup1@demo.example")}
-              className="p-2 border border-border rounded bg-surface hover:bg-surfaceHover text-left"
+              className="p-2.5 border border-border rounded-lg bg-surface-raised hover:bg-surface-hover text-left focus-ring transition-colors"
             >
               <div className="font-semibold text-textPrimary">Supervisor (Unit 1)</div>
-              <div className="text-textSecondary text-[11px] truncate">sup1@demo.example</div>
+              <div className="text-textMuted text-[10px] truncate">sup1@demo.example</div>
             </button>
             <button
               type="button"
               onClick={() => quickFill("buyerb@demo.example")}
-              className="p-2 border border-border rounded bg-surface hover:bg-surfaceHover text-left"
+              className="p-2.5 border border-border rounded-lg bg-surface-raised hover:bg-surface-hover text-left focus-ring transition-colors"
             >
               <div className="font-semibold text-textPrimary">Buyer (Company B)</div>
-              <div className="text-textSecondary text-[11px] truncate">buyerb@demo.example</div>
+              <div className="text-textMuted text-[10px] truncate">buyerb@demo.example</div>
             </button>
             <button
               type="button"
               onClick={() => quickFill("buyerc@demo.example")}
-              className="p-2 border border-border rounded bg-surface hover:bg-surfaceHover text-left"
+              className="p-2.5 border border-border rounded-lg bg-surface-raised hover:bg-surface-hover text-left focus-ring transition-colors"
             >
               <div className="font-semibold text-textPrimary">Buyer (Company C)</div>
-              <div className="text-textSecondary text-[11px] truncate">buyerc@demo.example</div>
+              <div className="text-textMuted text-[10px] truncate">buyerc@demo.example</div>
             </button>
           </div>
-          <p className="text-[11px] text-textSecondary text-center mt-2">Password for all demo accounts: <code className="bg-surface px-1 py-0.5 rounded">Demo@12345</code></p>
+          <p className="text-[11px] text-textMuted text-center">
+            Default password for all demo accounts:{" "}
+            <code className="bg-surface-raised border border-border px-1.5 py-0.5 rounded font-mono text-textPrimary">
+              Demo@12345
+            </code>
+          </p>
         </div>
       </div>
     </div>
